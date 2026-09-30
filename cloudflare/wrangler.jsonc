@@ -1,0 +1,52 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "opengym",
+  "main": "src/index.ts",
+  // Must not be newer than the workerd bundled with wrangler and with @cloudflare/vitest-pool-workers.
+  "compatibility_date": "2026-08-15",
+  // global_fetch_strictly_public is required for Client ID Metadata Documents (SSRF protection).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  // Served only on the custom domain: OAuth tokens are bound to exactly one origin (PUBLIC_ORIGIN),
+  // so the workers.dev hostname stays off. The zone (armio.cc) must be on this Cloudflare account;
+  // `wrangler deploy` creates the DNS record and certificate for the custom domain.
+  "workers_dev": false,
+  "routes": [{ "pattern": "gym.armio.cc", "custom_domain": true }],
+
+  "observability": { "enabled": true },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "opengym-db",
+      "database_id": "f73efbb2-707b-4ac3-8c8a-fc8213a47d58",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      // KV namespace "opengym-oauth".
+      "id": "00a254cab3df42978057216199e0652b"
+    }
+  ],
+
+  "vars": {
+    // The one public origin of this Worker: lowercase, no trailing slash. The Claude connector URL
+    // is `${PUBLIC_ORIGIN}/mcp`. Local development overrides it in .dev.vars.
+    "PUBLIC_ORIGIN": "https://gym.armio.cc",
+    // Comma-separated browser origins allowed to call /api/* (e.g. a hosted Flutter web build).
+    // Native apps send no Origin and need nothing here.
+    "APP_ORIGINS": "",
+    // Comma-separated extra hostnames accepted as OAuth redirect targets, besides claude.ai,
+    // claude.com and loopback callbacks.
+    "ALLOWED_REDIRECT_HOSTS": ""
+  },
+  // Secret (not a var): `npx wrangler secret put OWNER_PASSWORD` (at least 12 characters).
+
+  "triggers": {
+    // Daily cleanup: OAuth KV purge, auth/rate-limit logs, expired proposals.
+    "crons": ["17 4 * * *"]
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "about": "format.js weekKey, history.js streakWeeks (engine.md §2.17, §3), format helpers without locale, and workout order (engine-Q6/Q7).",
+  "clock": {"now":1790755200000,"tz":"Europe/Madrid","today":"2026-09-30"},
+  "groups": {
+    "weekKey": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"2025-12-29","ref":"§3","args":{"date":"2025-12-29"},"expected":"2026-1"},
+        {"name":"2026-01-01","ref":"§3","args":{"date":"2026-01-01"},"expected":"2026-1"},
+        {"name":"2026-12-31","ref":"§3","args":{"date":"2026-12-31"},"expected":"2026-53"},
+        {"name":"2027-01-01","ref":"§3","args":{"date":"2027-01-01"},"expected":"2026-53"},
+        {"name":"2027-01-03","ref":"§3","args":{"date":"2027-01-03"},"expected":"2026-53"},
+        {"name":"2027-01-04","ref":"§3","args":{"date":"2027-01-04"},"expected":"2027-1"},
+        {"name":"2020-12-31","ref":"§3","args":{"date":"2020-12-31"},"expected":"2020-53"},
+        {"name":"2021-01-03","ref":"§3","args":{"date":"2021-01-03"},"expected":"2020-53"},
+        {"name":"2024-12-30","ref":"§3","args":{"date":"2024-12-30"},"expected":"2025-1"},
+        {"name":"2026-09-30","args":{"date":"2026-09-30"},"expected":"2026-40"},
+        {"name":"2026-03-29","args":{"date":"2026-03-29"},"expected":"2026-13"},
+        {"name":"2026-10-25","args":{"date":"2026-10-25"},"expected":"2026-43"},
+        {"name":"2021-01-04","args":{"date":"2021-01-04"},"expected":"2021-1"},
+        {"name":"2015-12-31","args":{"date":"2015-12-31"},"expected":"2015-53"},
+        {"name":"2016-01-03","args":{"date":"2016-01-03"},"expected":"2015-53"},
+        {"name":"2008-12-29","args":{"date":"2008-12-29"},"expected":"2009-1"},
+        {"name":"2010-01-03","args":{"date":"2010-01-03"},"expected":"2009-53"},
+        {"name":"2026-06-15","args":{"date":"2026-06-15"},"expected":"2026-25"}
+      ]
+    },
+    "streakWeeks": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"no workouts","args":{"state":{"workouts":[]}},"expected":0},
+        {
+          "name": "this week and the two before",
+          "ref": "§2.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-09-29","entries":[]},
+                {"d":"2026-09-22","entries":[]},
+                {"d":"2026-09-15","entries":[]}
+              ]
+            }
+          },
+          "expected": 3
+        },
+        {
+          "name": "an empty current week does not break it",
+          "ref": "§2.17",
+          "args": {"state":{"workouts":[{"d":"2026-09-22","entries":[]},{"d":"2026-09-15","entries":[]}]}},
+          "expected": 2
+        },
+        {
+          "name": "a gap stops the count",
+          "ref": "§2.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-09-29","entries":[]},
+                {"d":"2026-09-22","entries":[]},
+                {"d":"2026-09-08","entries":[]}
+              ]
+            }
+          },
+          "expected": 2
+        },
+        {
+          "name": "only old workouts",
+          "args": {"state":{"workouts":[{"d":"2026-08-01","entries":[]}]}},
+          "expected": 0
+        },
+        {
+          "name": "across the new year (now Sunday 2027-01-03)",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-12-28","entries":[]},
+                {"d":"2026-12-21","entries":[]},
+                {"d":"2026-12-07","entries":[]}
+              ]
+            }
+          },
+          "now": 1798974000000,
+          "expected": 2
+        }
+      ]
+    },
+    "fmtSec": {
+      "scope": "app",
+      "vectors": [
+        {"name":"0","ref":"§10.18","args":{"sec":0},"expected":"0:00"},
+        {"name":"9","ref":"§10.18","args":{"sec":9},"expected":"0:09"},
+        {"name":"45","ref":"§10.18","args":{"sec":45},"expected":"0:45"},
+        {"name":"60","ref":"§10.18","args":{"sec":60},"expected":"1:00"},
+        {"name":"90","ref":"§10.18","args":{"sec":90},"expected":"1:30"},
+        {"name":"605","ref":"§10.18","args":{"sec":605},"expected":"10:05"},
+        {"name":"-5","ref":"§10.18","args":{"sec":-5},"expected":"0:00"},
+        {"name":"{\"$js\":\"undefined\"}","ref":"§10.18","args":{"sec":{"$js":"undefined"}},"expected":"0:00"},
+        {"name":"null","ref":"§10.18","args":{"sec":null},"expected":"0:00"},
+        {"name":"{\"$js\":\"NaN\"}","ref":"§10.18","args":{"sec":{"$js":"NaN"}},"expected":"0:00"},
+        {"name":"44.6","ref":"§10.18","args":{"sec":44.6},"expected":"0:45"}
+      ]
+    },
+    "fmtDur": {
+      "scope": "app",
+      "vectors": [
+        {"name":"0","args":{"ms":0},"expected":"0 min"},
+        {"name":"59999","args":{"ms":59999},"expected":"0 min"},
+        {"name":"60000","args":{"ms":60000},"expected":"1 min"},
+        {"name":"3599999","args":{"ms":3599999},"expected":"59 min"},
+        {"name":"3600000","args":{"ms":3600000},"expected":"1h 0m"},
+        {"name":"5400000","args":{"ms":5400000},"expected":"1h 30m"},
+        {"name":"7260000","args":{"ms":7260000},"expected":"2h 1m"}
+      ]
+    },
+    "durPart": {
+      "scope": "app",
+      "vectors": [
+        {"name":"0","args":{"ms":0},"expected":[]},
+        {"name":"59999","args":{"ms":59999},"expected":[]},
+        {"name":"60000","args":{"ms":60000},"expected":["1 min"]},
+        {"name":"4500000","args":{"ms":4500000},"expected":["1h 15m"]}
+      ]
+    },
+    "sortWorkouts": {
+      "scope": "shared",
+      "fix": ["engine-Q6","engine-Q7"],
+      "note": "Stable sort by (d, start) ascending; a workout without `start` sits at local noon of `d` in clock.tz.",
+      "vectors": [
+        {
+          "name": "date first, then start; date-only at local noon; ties keep input order",
+          "args": {
+            "workouts": [
+              {"id":"a","d":"2026-03-02","start":1772470800000,"entries":[]},
+              {"id":"b","d":"2026-03-01","start":1772352000000,"entries":[]},
+              {"id":"c","d":"2026-03-02","entries":[]},
+              {"id":"d","d":"2026-03-02","start":1772434800000,"entries":[]},
+              {"id":"e","d":"2026-02-27","start":1772218800000,"entries":[]},
+              {"id":"f","d":"2026-03-03","start":1772517600000,"entries":[]},
+              {"id":"g","d":"2026-03-03","start":1772517600000,"entries":[]},
+              {"id":"h","d":"2026-02-28","start":1772690400000,"entries":[]},
+              {"id":"i","d":"2026-03-02","start":1772451000000,"entries":[]}
+            ],
+            "tz": "Europe/Madrid"
+          },
+          "expected": ["e","h","b","d","c","i","a","f","g"]
+        },
+        {
+          "name": "already sorted input is unchanged",
+          "args": {
+            "workouts": [
+              {"id":"x","d":"2026-01-01","start":1767254400000,"entries":[]},
+              {"id":"y","d":"2026-01-02","entries":[]}
+            ],
+            "tz": "Europe/Madrid"
+          },
+          "expected": ["x","y"]
+        }
+      ]
+    }
+  }
+}

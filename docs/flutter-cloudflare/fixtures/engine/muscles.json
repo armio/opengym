@@ -1,0 +1,301 @@
+{
+  "about": "frontend/src/lib/muscles.js (engine.md §7).",
+  "constants": {
+    "MUSCLES": [
+      "trapezius",
+      "deltoids",
+      "chest",
+      "upper-back",
+      "serratus",
+      "biceps",
+      "triceps",
+      "forearm",
+      "abs",
+      "obliques",
+      "lower-back",
+      "gluteal",
+      "quadriceps",
+      "hamstring",
+      "adductors",
+      "hip-flexors",
+      "calves",
+      "tibialis"
+    ]
+  },
+  "groups": {
+    "musclesOf": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "bench press",
+          "ref": "§7.2",
+          "args": {"exId":"0025"},
+          "expected": {"chest":1,"triceps":0.4,"deltoids":0.4}
+        },
+        {
+          "name": "barbell full squat",
+          "ref": "§7.2",
+          "args": {"exId":"0043"},
+          "expected": {"gluteal":1,"quadriceps":0.4,"hamstring":0.4,"calves":0.4,"abs":0.4}
+        },
+        {"name":"3/4 sit-up","args":{"exId":"0001"},"expected":{"abs":1,"hip-flexors":0.4,"lower-back":0.4}},
+        {
+          "name": "cardio exercise",
+          "args": {"exId":"3220"},
+          "expected": {"quadriceps":0.4,"hamstring":0.4,"calves":0.4}
+        },
+        {
+          "name": "custom exercise falls back to its body part",
+          "ref": "§7.2",
+          "args": {
+            "exId": "cx-legs",
+            "customEx": [
+              {"id":"cx-legs","n":"sled push","bp":"upper legs","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": {"quadriceps":0.4,"hamstring":0.35,"gluteal":0.25}
+        },
+        {"name":"unknown id","args":{"exId":"nope"},"expected":{}}
+      ]
+    },
+    "loadOf": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "effective sets per muscle",
+          "ref": "§7.3",
+          "args": {"items":[{"id":"0025","sets":4},{"id":"0001","sets":3}]},
+          "expected": {
+            "chest": 4,
+            "triceps": 1.6,
+            "deltoids": 1.6,
+            "abs": 3,
+            "hip-flexors": 1.2000000000000002,
+            "lower-back": 1.2000000000000002
+          }
+        },
+        {
+          "name": "zero sets and unknown ids add nothing",
+          "args": {
+            "items": [{"id":"0025","sets":0},{"id":"nope","sets":3},{"id":"cx-legs","sets":2}],
+            "customEx": [
+              {"id":"cx-legs","n":"sled push","bp":"upper legs","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": {"quadriceps":0.8,"hamstring":0.7,"gluteal":0.5}
+        }
+      ]
+    },
+    "loadOfWorkouts": {
+      "scope": "shared",
+      "note": "`hardOnly` passes isHardSet as the set filter.",
+      "vectors": [
+        {
+          "name": "done sets",
+          "args": {
+            "workouts": [
+              {
+                "d": "2026-09-28",
+                "entries": [
+                  {
+                    "id": "0025",
+                    "sets": [
+                      {"w":60,"r":8,"rir":2,"done":true},
+                      {"w":60,"r":8,"rir":4,"done":true},
+                      {"w":60,"r":8,"done":false}
+                    ]
+                  },
+                  {"id":"0043","sets":[{"w":100,"r":5,"rpe":9,"done":true}]}
+                ]
+              },
+              {
+                "d": "2026-09-29",
+                "entries": [{"id":"cx-legs","sets":[{"w":50,"r":10,"done":true},{"w":50,"r":10,"done":true}]}]
+              }
+            ],
+            "customEx": [
+              {"id":"cx-legs","n":"sled push","bp":"upper legs","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": {
+            "chest": 2,
+            "triceps": 0.8,
+            "deltoids": 0.8,
+            "gluteal": 1.5,
+            "quadriceps": 1.2000000000000002,
+            "hamstring": 1.1,
+            "calves": 0.4,
+            "abs": 0.4
+          }
+        },
+        {
+          "name": "hard sets only",
+          "args": {
+            "workouts": [
+              {
+                "d": "2026-09-28",
+                "entries": [
+                  {
+                    "id": "0025",
+                    "sets": [
+                      {"w":60,"r":8,"rir":2,"done":true},
+                      {"w":60,"r":8,"rir":4,"done":true},
+                      {"w":60,"r":8,"done":false}
+                    ]
+                  },
+                  {"id":"0043","sets":[{"w":100,"r":5,"rpe":9,"done":true}]}
+                ]
+              },
+              {
+                "d": "2026-09-29",
+                "entries": [{"id":"cx-legs","sets":[{"w":50,"r":10,"done":true},{"w":50,"r":10,"done":true}]}]
+              }
+            ],
+            "hardOnly": true,
+            "customEx": [
+              {"id":"cx-legs","n":"sled push","bp":"upper legs","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": {
+            "chest": 1,
+            "triceps": 0.4,
+            "deltoids": 0.4,
+            "gluteal": 1,
+            "quadriceps": 0.4,
+            "hamstring": 0.4,
+            "calves": 0.4,
+            "abs": 0.4
+          }
+        }
+      ]
+    },
+    "loadOfRoutine": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "planned sets, missing sets count 1",
+          "args": {"routine":{"id":"r1","ex":[{"id":"0025","sets":3},{"id":"0043"}]}},
+          "expected": {
+            "chest": 3,
+            "triceps": 1.2000000000000002,
+            "deltoids": 1.2000000000000002,
+            "gluteal": 1,
+            "quadriceps": 0.4,
+            "hamstring": 0.4,
+            "calves": 0.4,
+            "abs": 0.4
+          }
+        }
+      ]
+    },
+    "levelsOf": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "relative to the hardest-worked muscle",
+          "ref": "§7.4",
+          "args": {"load":{"chest":12,"triceps":4.8,"deltoids":4.8,"abs":1,"quadriceps":0.1}},
+          "expected": {
+            "trapezius": 0,
+            "deltoids": 2,
+            "chest": 4,
+            "upper-back": 0,
+            "serratus": 0,
+            "biceps": 0,
+            "triceps": 2,
+            "forearm": 0,
+            "abs": 1,
+            "obliques": 0,
+            "lower-back": 0,
+            "gluteal": 0,
+            "quadriceps": 1,
+            "hamstring": 0,
+            "adductors": 0,
+            "hip-flexors": 0,
+            "calves": 0,
+            "tibialis": 0
+          }
+        },
+        {
+          "name": "nothing trained",
+          "args": {"load":{}},
+          "expected": {
+            "trapezius": 0,
+            "deltoids": 0,
+            "chest": 0,
+            "upper-back": 0,
+            "serratus": 0,
+            "biceps": 0,
+            "triceps": 0,
+            "forearm": 0,
+            "abs": 0,
+            "obliques": 0,
+            "lower-back": 0,
+            "gluteal": 0,
+            "quadriceps": 0,
+            "hamstring": 0,
+            "adductors": 0,
+            "hip-flexors": 0,
+            "calves": 0,
+            "tibialis": 0
+          }
+        }
+      ]
+    },
+    "rankOf": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "worked by load, ties in body order; missed in body order",
+          "ref": "§7.5",
+          "args": {"load":{"chest":12,"triceps":4.8,"deltoids":4.8,"abs":1,"quadriceps":0.1}},
+          "expected": {
+            "worked": ["chest","deltoids","triceps","abs","quadriceps"],
+            "missed": [
+              "trapezius",
+              "upper-back",
+              "serratus",
+              "biceps",
+              "forearm",
+              "obliques",
+              "lower-back",
+              "gluteal",
+              "hamstring",
+              "adductors",
+              "hip-flexors",
+              "calves",
+              "tibialis"
+            ]
+          }
+        },
+        {
+          "name": "nothing trained",
+          "args": {"load":{}},
+          "expected": {
+            "worked": [],
+            "missed": [
+              "trapezius",
+              "deltoids",
+              "chest",
+              "upper-back",
+              "serratus",
+              "biceps",
+              "triceps",
+              "forearm",
+              "abs",
+              "obliques",
+              "lower-back",
+              "gluteal",
+              "quadriceps",
+              "hamstring",
+              "adductors",
+              "hip-flexors",
+              "calves",
+              "tibialis"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

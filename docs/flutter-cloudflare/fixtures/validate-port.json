@@ -1,0 +1,462 @@
+{
+  "about": "Port rules of contract §5.3 on top of the original validators (validate.json). Hand-written: the rules have no original to run. `validatePlanProposal(input, context)` backs propose_plan; `validateChangesProposal(input, plan, context)` backs propose_changes. `expected` is matched partially: every key it lists must match (recursively), arrays must have exactly the listed length and `errors` lists are exact and ordered (the original's errors for an item come before the port's). A vector's `context` replaces the default one; `plan` is always the file-level plan.",
+  "context": {
+    "customEx": [
+      {"id": "cmine1", "n": "nordic curl", "bp": "upper legs", "desc": "", "tg": "", "eq": "custom", "custom": true},
+      {"id": "cmine2", "n": "sled sprint", "bp": "cardio", "desc": "", "tg": "", "eq": "custom", "custom": true}
+    ],
+    "athlete": {"daysPerWeek": 3, "savedAt": 1790000000000, "equipment": ["barbell", "dumbbell", "body weight"]},
+    "workingWeights": [{"id": "0025", "best": 80}, {"id": "0001", "best": 20}]
+  },
+  "plan": {
+    "routines": [
+      {
+        "id": "r1", "name": "Full body A", "emoji": "barbell", "prog": "linear",
+        "ex": [
+          {"id": "0001", "sets": 3, "reps": 10, "mode": "reps", "weight": 20, "prog": "linear"},
+          {"id": "0007", "sets": 3, "sec": 45, "mode": "time"},
+          {"id": "3220", "sets": 1, "min": 20, "speed": 8},
+          {"id": "0025", "sets": 3, "reps": 8, "mode": "reps", "weight": 60, "sg": "s1"},
+          {"id": "0009", "sets": 3, "reps": 12, "mode": "reps", "sg": "s1"}
+        ]
+      },
+      {"id": "r2", "name": "Full body B", "ex": [{"id": "0002", "sets": 4, "reps": 6, "mode": "reps"}, {"id": "cmine1", "sets": 3, "reps": 8, "mode": "reps"}]}
+    ],
+    "week": {"1": "r1", "3": "r2", "5": "r1"},
+    "customEx": [
+      {"id": "cmine1", "n": "nordic curl", "bp": "upper legs", "desc": "", "tg": "", "eq": "custom", "custom": true},
+      {"id": "cmine2", "n": "sled sprint", "bp": "cardio", "desc": "", "tg": "", "eq": "custom", "custom": true}
+    ]
+  },
+  "groups": {
+    "validatePlanProposal": {
+      "vectors": [
+        {
+          "name": "accepted: modes follow the body part, customs resolve, weights capped, equipment warned",
+          "rules": ["coach-Q1", "coach-Q3", "coach-Q4", "FR-20"],
+          "args": {
+            "input": {
+              "name": "Plan", "summary": "S", "basedOn": "no history yet", "week": {"1": "a", "3": "b", "5": "a"},
+              "routines": [
+                {"id": "a", "name": "A", "emoji": "barbell", "prog": "linear", "ex": [{"id": "0025", "sets": 3, "reps": 5, "weight": 100}, {"id": "0007", "mode": "time", "sec": 30}]},
+                {"id": "b", "name": "B", "ex": [{"id": "3220", "min": 25, "speed": 9}, {"id": "cmine1", "sets": 3, "reps": 8}, {"id": "cmine2"}]}
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "week": {"1": "a", "3": "b", "5": "a"},
+              "routines": [
+                {"id": "a", "emoji": "barbell", "prog": "linear", "ex": [
+                  {"id": "0025", "sets": 3, "mode": "reps", "reps": 5, "weight": 80},
+                  {"id": "0007", "sets": 3, "mode": "time", "sec": 30}
+                ]},
+                {"id": "b", "emoji": "🏋️", "ex": [
+                  {"id": "3220", "sets": 3, "mode": "cardio", "min": 25, "speed": 9},
+                  {"id": "cmine1", "sets": 3, "mode": "reps", "reps": 8},
+                  {"id": "cmine2", "sets": 3, "mode": "cardio", "min": 20, "speed": 8}
+                ]}
+              ]
+            },
+            "warnings": ["\"alternate lateral pulldown\" (0007) needs cable, which is not in the athlete's equipment (barbell, dumbbell, body weight)"]
+          }
+        },
+        {
+          "name": "a custom exercise defined in the bundle takes its own body part",
+          "rules": ["coach-Q1"],
+          "args": {
+            "input": {
+              "week": {"1": "a", "3": "a", "5": "a"},
+              "routines": [{"id": "a", "name": "A", "ex": [{"id": "cx1", "min": 15}]}],
+              "customEx": [{"id": "cx1", "n": "Rower sprints", "bp": "cardio"}]
+            }
+          },
+          "expected": {"ok": true, "bundle": {"routines": [{"ex": [{"id": "cx1", "sets": 3, "mode": "cardio", "min": 15, "speed": 8}]}]}, "warnings": []}
+        },
+        {
+          "name": "an empty week is rejected",
+          "rules": ["coach-Q2"],
+          "args": {"input": {"week": {}, "routines": [{"name": "A", "ex": [{"id": "0025"}]}]}},
+          "expected": {"ok": false, "errors": ["the plan needs at least one training day in \"week\""]}
+        },
+        {
+          "name": "no week at all is rejected",
+          "rules": ["coach-Q2"],
+          "args": {"input": {"routines": [{"name": "A", "ex": [{"id": "0025"}]}]}},
+          "expected": {"ok": false, "errors": ["the plan needs at least one training day in \"week\""]}
+        },
+        {
+          "name": "the day count must match a saved profile",
+          "rules": ["coach-Q2", "FR-17"],
+          "args": {"input": {"week": {"1": "a"}, "routines": [{"id": "a", "name": "A", "ex": [{"id": "0025"}]}]}},
+          "expected": {"ok": false, "errors": ["the week schedules 1 days but 3 were asked for"]}
+        },
+        {
+          "name": "the day count is free while the profile was never saved",
+          "rules": ["coach-Q2"],
+          "args": {
+            "input": {"week": {"1": "a"}, "routines": [{"id": "a", "name": "A", "ex": [{"id": "0025"}]}]},
+            "context": {"customEx": [], "athlete": {"daysPerWeek": 3, "savedAt": null, "equipment": []}, "workingWeights": []}
+          },
+          "expected": {"ok": true, "warnings": []}
+        },
+        {
+          "name": "mode cardio on a non-cardio exercise",
+          "rules": ["critic-G4"],
+          "args": {"input": {"week": {"1": "a", "3": "a", "5": "a"}, "routines": [{"id": "a", "name": "A", "ex": [{"id": "0025", "mode": "cardio", "min": 10}]}]}},
+          "expected": {"ok": false, "errors": ["routines[0].ex[0].mode \"cardio\" is only for cardio exercises"]}
+        },
+        {
+          "name": "a cardio exercise logged as reps or time",
+          "rules": ["critic-G4"],
+          "args": {
+            "input": {
+              "week": {"1": "a", "3": "a", "5": "a"},
+              "routines": [{"id": "a", "name": "A", "ex": [{"id": "0025"}, {"id": "3220", "mode": "reps", "reps": 20}, {"id": "cmine2", "mode": "time", "sec": 60}]}]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].ex[1] is a cardio exercise and must use mode \"cardio\"",
+              "routines[0].ex[2] is a cardio exercise and must use mode \"cardio\""
+            ]
+          }
+        },
+        {
+          "name": "an exercise policy must suit its mode",
+          "rules": ["coach-Q13"],
+          "args": {
+            "input": {
+              "week": {"1": "a", "3": "a", "5": "a"},
+              "routines": [{"id": "a", "name": "A", "ex": [
+                {"id": "0025", "prog": "time"},
+                {"id": "0007", "mode": "time", "prog": "linear"},
+                {"id": "3220", "prog": "linear"},
+                {"id": "0001", "mode": "time", "prog": "time"},
+                {"id": "cmine2", "prog": "off"}
+              ]}]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].ex[0].prog \"time\" is not allowed for mode \"reps\"",
+              "routines[0].ex[1].prog \"linear\" is not allowed for mode \"time\"",
+              "routines[0].ex[2].prog \"linear\" is not allowed for mode \"cardio\""
+            ]
+          }
+        },
+        {
+          "name": "a routine policy must be a reps policy",
+          "rules": ["coach-Q13", "critic-G5"],
+          "args": {
+            "input": {
+              "week": {"1": "a", "3": "b", "5": "a"},
+              "routines": [{"id": "a", "name": "A", "prog": "time", "ex": [{"id": "0025"}]}, {"id": "b", "name": "B", "prog": "vibes", "ex": [{"id": "0025"}]}]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].prog must be one of off, linear, greyskull, double",
+              "routines[1].prog \"vibes\" is not one of off, linear, greyskull, double, time"
+            ]
+          }
+        },
+        {
+          "name": "the owner's custom ids are accepted, unknown ids still rejected",
+          "rules": ["coach-Q4"],
+          "args": {"input": {"week": {"1": "a", "3": "a", "5": "a"}, "routines": [{"id": "a", "name": "A", "ex": [{"id": "cmine1"}, {"id": "cnobody"}]}]}},
+          "expected": {
+            "ok": false,
+            "errors": ["routines[0].ex[1].id \"cnobody\" is not in the exercise library and is not one of your own customEx entries — use an id from the library provided in the payload"]
+          }
+        },
+        {
+          "name": "the original's errors for an item come before the port's, in reading order",
+          "rules": ["critic-G5", "critic-G4", "coach-Q2"],
+          "args": {"input": {"routines": [{"name": "A", "prog": "time", "ex": [{"id": "nope"}, {"id": "0043", "mode": "cardio"}, {"id": "0025", "prog": "vibes"}]}]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].prog must be one of off, linear, greyskull, double",
+              "routines[0].ex[0].id \"nope\" is not in the exercise library and is not one of your own customEx entries — use an id from the library provided in the payload",
+              "routines[0].ex[1].mode \"cardio\" is only for cardio exercises",
+              "routines[0].ex[2].prog \"vibes\" is not one of off, linear, greyskull, double, time",
+              "the plan needs at least one training day in \"week\""
+            ]
+          }
+        },
+        {
+          "name": "emoji are clamped by grapheme cluster",
+          "rules": ["coach-Q18"],
+          "args": {
+            "input": {
+              "week": {"1": "a", "3": "b", "5": "c"},
+              "routines": [
+                {"id": "a", "name": "A", "emoji": "👨‍👩‍👧‍👦💪🏋️‍♀️", "ex": [{"id": "0025"}]},
+                {"id": "b", "name": "B", "emoji": "figureStrength", "ex": [{"id": "0025"}]},
+                {"id": "c", "name": "C", "emoji": "🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸", "ex": [{"id": "0025"}]}
+              ]
+            }
+          },
+          "expected": {"ok": true, "bundle": {"routines": [{"emoji": "👨‍👩‍👧‍👦💪🏋️‍♀️"}, {"emoji": "figureSt"}, {"emoji": "🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸"}]}}
+        },
+        {
+          "name": "no equipment listed means everything: no warnings",
+          "rules": ["coach-Q3"],
+          "args": {
+            "input": {"week": {"1": "a"}, "routines": [{"id": "a", "name": "A", "ex": [{"id": "0007"}, {"id": "0009"}]}]},
+            "context": {"customEx": [], "athlete": {"daysPerWeek": 1, "savedAt": 1790000000000, "equipment": []}, "workingWeights": []}
+          },
+          "expected": {"ok": true, "warnings": []}
+        }
+      ]
+    },
+    "validateChangesProposal": {
+      "vectors": [
+        {
+          "name": "before is the plan's current value, not Claude's claim",
+          "rules": ["contract §5.2"],
+          "args": {"input": {"summary": "s", "changes": [
+            {"id": "c1", "type": "sets", "target": {"routineId": "r1", "exId": "0001"}, "before": 99, "after": 4, "why": "w"},
+            {"id": "c2", "type": "repsMin", "target": {"routineId": "r1", "exId": "0001"}, "before": 6, "after": 8, "why": "w"},
+            {"id": "c3", "type": "rename-routine", "target": {"routineId": "r2"}, "after": "Lower", "why": "w"},
+            {"id": "c4", "type": "week", "target": {"weekday": 6}, "before": "r1", "after": "r2", "why": "w"},
+            {"id": "c5", "type": "swap-exercise", "target": {"routineId": "r2", "exId": "0002"}, "after": {"id": "0001"}, "why": "w"},
+            {"id": "c6", "type": "cardio", "target": {"routineId": "r1", "exId": "3220"}, "after": {"min": 30}, "why": "w"},
+            {"id": "c7", "type": "superset", "target": {"routineId": "r1", "exId": "0025"}, "after": {"link": false}, "why": "w"},
+            {"id": "c8", "type": "reorder", "target": {"routineId": "r2"}, "after": ["cmine1", "0002"], "why": "w"},
+            {"id": "c9", "type": "remove-exercise", "target": {"routineId": "r1", "exId": "0007"}, "before": {"id": "0007"}, "why": "w"},
+            {"id": "c10", "type": "superset", "target": {"routineId": "r1", "exId": "0001"}, "after": {"link": true, "with": "0007"}, "why": "w"}
+          ]}},
+          "expected": {
+            "ok": true,
+            "proposal": {"changes": [
+              {"id": "c1", "before": 3},
+              {"id": "c2", "before": null},
+              {"id": "c3", "before": "Full body B"},
+              {"id": "c4", "before": null},
+              {"id": "c5", "before": {"id": "0002"}},
+              {"id": "c6", "before": {"min": 20, "speed": 8}},
+              {"id": "c7", "before": {"link": true, "with": "0009"}},
+              {"id": "c8", "before": ["0002", "cmine1"]},
+              {"id": "c9", "before": null},
+              {"id": "c10", "before": {"link": false}}
+            ]},
+            "warnings": []
+          }
+        },
+        {
+          "name": "add-exercise: the owner's custom, mode from its body part, cardio fields kept",
+          "rules": ["coach-Q4", "coach-Q1", "coach-B5"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "cmine2", "min": 15, "speed": 10, "position": 0}, "why": "w"}]}},
+          "expected": {
+            "ok": true,
+            "proposal": {"changes": [{"after": {"id": "cmine2", "name": "sled sprint", "sets": 3, "mode": "cardio", "min": 15, "speed": 10, "position": 0}, "before": null}]},
+            "warnings": []
+          }
+        },
+        {
+          "name": "add-exercise: mode cardio on a non-cardio exercise",
+          "rules": ["critic-G4"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "0043", "mode": "cardio"}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after.mode \"cardio\" is only for cardio exercises"]}
+        },
+        {
+          "name": "add-exercise: a cardio exercise logged as reps",
+          "rules": ["critic-G4"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "3220", "mode": "reps", "reps": 20}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after is a cardio exercise and must use mode \"cardio\""]}
+        },
+        {
+          "name": "add-exercise: already in the routine",
+          "rules": ["coach-Q12"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-exercise", "target": {"routineId": "r1"}, "after": {"id": "0001"}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after.id \"0001\" is already in routine \"Full body A\""]}
+        },
+        {
+          "name": "add-exercise: policy must suit the mode",
+          "rules": ["coach-Q13"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "0043", "mode": "time", "sec": 30, "prog": "linear"}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after.prog \"linear\" is not allowed for mode \"time\""]}
+        },
+        {
+          "name": "add and swap weights are capped at the working weight",
+          "rules": ["coach-Q17"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "0001", "weight": 50}, "why": "w"},
+            {"id": "c2", "type": "swap-exercise", "target": {"routineId": "r2", "exId": "0002"}, "after": {"id": "0025", "weight": 100}, "why": "w"},
+            {"id": "c3", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "0043", "weight": 140}, "why": "w"}
+          ]}},
+          "expected": {
+            "ok": true,
+            "proposal": {"changes": [{"after": {"id": "0001", "weight": 20}}, {"after": {"id": "0025", "weight": 80}}, {"after": {"id": "0043", "weight": 140}}]},
+            "warnings": []
+          }
+        },
+        {
+          "name": "swap: cannot cross between cardio and the rest",
+          "rules": ["critic-G4"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "swap-exercise", "target": {"routineId": "r1", "exId": "0001"}, "after": {"id": "cmine2"}, "why": "w"},
+            {"id": "c2", "type": "swap-exercise", "target": {"routineId": "r1", "exId": "3220"}, "after": {"id": "0043"}, "why": "w"},
+            {"id": "c3", "type": "swap-exercise", "target": {"routineId": "r1", "exId": "3220"}, "after": {"id": "cmine2"}, "why": "w"}
+          ]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0] swaps between cardio and non-cardio — use remove-exercise and add-exercise",
+              "changes[1] swaps between cardio and non-cardio — use remove-exercise and add-exercise"
+            ]
+          }
+        },
+        {
+          "name": "swap: to an exercise already in the routine",
+          "rules": ["coach-Q12"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "swap-exercise", "target": {"routineId": "r1", "exId": "0001"}, "after": {"id": "0025"}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after.id \"0025\" is already in routine \"Full body A\""]}
+        },
+        {
+          "name": "exercise-prog must suit the exercise's mode",
+          "rules": ["coach-Q13"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "exercise-prog", "target": {"routineId": "r1", "exId": "0001"}, "after": "time", "why": "w"},
+            {"id": "c2", "type": "exercise-prog", "target": {"routineId": "r1", "exId": "0007"}, "after": "time", "why": "w"},
+            {"id": "c3", "type": "exercise-prog", "target": {"routineId": "r1", "exId": "3220"}, "after": "linear", "why": "w"},
+            {"id": "c4", "type": "exercise-prog", "target": {"routineId": "r1", "exId": "3220"}, "after": "off", "why": "w"}
+          ]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after \"time\" is not allowed for mode \"reps\"",
+              "changes[2].after \"linear\" is not allowed for mode \"cardio\""
+            ]
+          }
+        },
+        {
+          "name": "routine-prog must be a reps policy",
+          "rules": ["coach-Q13", "critic-G5"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "routine-prog", "target": {"routineId": "r1"}, "after": "time", "why": "w"},
+            {"id": "c2", "type": "routine-prog", "target": {"routineId": "r2"}, "after": "double", "why": "w"}
+          ]}},
+          "expected": {"ok": false, "errors": ["changes[0].after must be one of off, linear, greyskull, double"]}
+        },
+        {
+          "name": "reorder must be a true permutation",
+          "rules": ["coach-Q7"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "reorder", "target": {"routineId": "r1"}, "after": ["0001", "0001", "0007", "3220", "0025"], "why": "w"},
+            {"id": "c2", "type": "reorder", "target": {"routineId": "r1"}, "after": ["0009", "0025", "3220", "0007", "0001"], "why": "w"}
+          ]}},
+          "expected": {"ok": false, "errors": ["changes[0].after must list exactly the 5 exercise ids already in \"Full body A\", reordered"]}
+        },
+        {
+          "name": "a superset links two different exercises",
+          "rules": ["coach-Q8"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "superset", "target": {"routineId": "r1", "exId": "0001"}, "after": {"link": true, "with": "0001"}, "why": "w"}]}},
+          "expected": {"ok": false, "errors": ["changes[0].after.with must be a different exercise than target.exId"]}
+        },
+        {
+          "name": "change ids are unique, defaults included",
+          "rules": ["coach-Q15"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "sets", "target": {"routineId": "r1", "exId": "0001"}, "after": 4, "why": "w"},
+            {"id": "c1", "type": "reps", "target": {"routineId": "r1", "exId": "0001"}, "after": 12, "why": "w"},
+            {"type": "sets", "target": {"routineId": "r2", "exId": "0002"}, "after": 5, "why": "w"},
+            {"id": "c2", "type": "reps", "target": {"routineId": "r2", "exId": "0002"}, "after": 8, "why": "w"}
+          ]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[1].id \"c1\" is already used by changes[0]",
+              "changes[3].id \"c2\" is already used by changes[2]"
+            ]
+          }
+        },
+        {
+          "name": "add-routine: policy and exercise modes, positions as sent",
+          "rules": ["critic-G5", "critic-G4"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-routine", "target": {}, "after": {
+            "name": "C", "prog": "time", "ex": [{"id": "nope"}, {"id": "3220", "mode": "reps"}, {"id": "0025", "mode": "cardio"}, {"id": "0043"}]
+          }, "why": "w"}]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after.prog must be one of off, linear, greyskull, double",
+              "changes[0].after.ex[1] is a cardio exercise and must use mode \"cardio\"",
+              "changes[0].after.ex[2].mode \"cardio\" is only for cardio exercises"
+            ]
+          }
+        },
+        {
+          "name": "add-routine: cardio keeps min and speed, customs resolve, emoji by grapheme",
+          "rules": ["coach-B5", "coach-Q4", "coach-Q1", "coach-Q18"],
+          "args": {"input": {"changes": [{"id": "c1", "type": "add-routine", "target": {}, "after": {
+            "name": "Acondicionamiento", "emoji": "🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️", "prog": "double",
+            "ex": [{"id": "3220", "min": 30, "speed": 9}, {"id": "cmine1", "sets": 4, "reps": 6}]
+          }, "why": "w"}]}},
+          "expected": {
+            "ok": true,
+            "proposal": {"changes": [{"type": "add-routine", "before": null, "after": {
+              "name": "Acondicionamiento", "emoji": "🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️🏃🏽‍♀️", "prog": "double",
+              "ex": [
+                {"id": "3220", "name": "astride jumps (male)", "sets": 3, "mode": "cardio", "min": 30, "speed": 9},
+                {"id": "cmine1", "name": "nordic curl", "sets": 4, "mode": "reps", "reps": 6}
+              ]
+            }}]},
+            "warnings": []
+          }
+        },
+        {
+          "name": "exercises outside the athlete's equipment are a warning",
+          "rules": ["coach-Q3"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "add-exercise", "target": {"routineId": "r2"}, "after": {"id": "0007"}, "why": "w"},
+            {"id": "c2", "type": "add-routine", "target": {}, "after": {"name": "D", "ex": [{"id": "0009"}, {"id": "0007"}, {"id": "cmine1"}]}, "why": "w"}
+          ]}},
+          "expected": {
+            "ok": true,
+            "warnings": [
+              "\"alternate lateral pulldown\" (0007) needs cable, which is not in the athlete's equipment (barbell, dumbbell, body weight)",
+              "\"assisted chest dip (kneeling)\" (0009) needs leverage machine, which is not in the athlete's equipment (barbell, dumbbell, body weight)"
+            ]
+          }
+        },
+        {
+          "name": "the original's errors and the port's in one list",
+          "rules": ["coach-Q7"],
+          "args": {"input": {"changes": [
+            {"id": "c1", "type": "delete-everything", "why": "w"},
+            {"id": "c2", "type": "reorder", "target": {"routineId": "r2"}, "after": ["0002", "0002"], "why": "w"}
+          ]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].type \"delete-everything\" is not allowed — use one of: add-exercise, remove-exercise, swap-exercise, sets, reps, repsMin, sec, cardio, reorder, superset, routine-prog, exercise-prog, inc, add-routine, remove-routine, rename-routine, week",
+              "changes[1].after must list exactly the 2 exercise ids already in \"Full body B\", reordered"
+            ]
+          }
+        },
+        {
+          "name": "a no-change answer passes through",
+          "rules": [],
+          "args": {"input": {"nochange": true, "reading": "Todo va bien."}},
+          "expected": {"ok": true, "nochange": true, "reading": "Todo va bien."}
+        }
+      ]
+    },
+    "clampEmoji": {
+      "vectors": [
+        {"name": "ASCII icon keys clamp as before", "args": {"value": "kettlebell"}, "expected": "kettlebe"},
+        {"name": "a ZWJ sequence is one cluster", "args": {"value": "🏋️‍♀️"}, "expected": "🏋️‍♀️"},
+        {"name": "eight flags", "args": {"value": "🇪🇸🇵🇹🇫🇷🇮🇹🇩🇪🇬🇧🇺🇸🇲🇽🇦🇷"}, "expected": "🇪🇸🇵🇹🇫🇷🇮🇹🇩🇪🇬🇧🇺🇸🇲🇽"},
+        {"name": "combining marks stay with their base", "args": {"value": "ééééééééé"}, "expected": "éééééééé"},
+        {"name": "empty", "args": {"value": ""}, "expected": ""}
+      ]
+    }
+  }
+}

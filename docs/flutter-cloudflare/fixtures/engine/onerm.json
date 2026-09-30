@@ -1,0 +1,470 @@
+{
+  "about": "frontend/src/lib/onerm.js (engine.md §5, §10.14–§10.16, §11).",
+  "constants": {"REP_CAP":12,"DEFAULT_FORMULA":"epley","FORMULAS":["epley","brzycki","lombardi"]},
+  "groups": {
+    "estimate1RM": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"100 × 1","ref":"§10.14","args":{"w":100,"r":1},"expected":100},
+        {"name":"62.5 × 1","ref":"§10.14","args":{"w":62.5,"r":1},"expected":62.5},
+        {"name":"100 × 5","ref":"§10.14","args":{"w":100,"r":5},"expected":116.7},
+        {"name":"100 × 10","ref":"§10.14","args":{"w":100,"r":10},"expected":133.3},
+        {"name":"80 × 8","ref":"§10.14","args":{"w":80,"r":8},"expected":101.3},
+        {"name":"60 × 3","ref":"§10.14","args":{"w":60,"r":3},"expected":66},
+        {"name":"101.25 × 7","ref":"§10.14","args":{"w":101.25,"r":7},"expected":124.9},
+        {"name":"100 × 3","ref":"§10.14","args":{"w":100,"r":3},"expected":110},
+        {"name":"100 × 12","ref":"§10.14","args":{"w":100,"r":12},"expected":140},
+        {"name":"100 × 13","ref":"§10.14","args":{"w":100,"r":13},"expected":null},
+        {"name":"60 × 30","ref":"§10.14","args":{"w":60,"r":30},"expected":null},
+        {"name":"0 × 5","ref":"§10.14","args":{"w":0,"r":5},"expected":null},
+        {"name":"-100 × 5","ref":"§10.14","args":{"w":-100,"r":5},"expected":null},
+        {"name":"100 × 0","ref":"§10.14","args":{"w":100,"r":0},"expected":null},
+        {"name":"100 × -3","ref":"§10.14","args":{"w":100,"r":-3},"expected":null},
+        {
+          "name": "{\"$js\":\"undefined\"} × 5",
+          "ref": "§10.14",
+          "args": {"w":{"$js":"undefined"},"r":5},
+          "expected": null
+        },
+        {
+          "name": "100 × {\"$js\":\"undefined\"}",
+          "ref": "§10.14",
+          "args": {"w":100,"r":{"$js":"undefined"}},
+          "expected": null
+        },
+        {"name":"{\"$js\":\"NaN\"} × 5","ref":"§10.14","args":{"w":{"$js":"NaN"},"r":5},"expected":null},
+        {
+          "name": "{\"$js\":\"Infinity\"} × 5",
+          "ref": "§10.14",
+          "args": {"w":{"$js":"Infinity"},"r":5},
+          "expected": null
+        },
+        {"name":"\"\" × \"\"","ref":"§10.14","args":{"w":"","r":""},"expected":null},
+        {"name":"\"100\" × \"5\"","ref":"§10.14","args":{"w":"100","r":"5"},"expected":116.7},
+        {"name":"null × 5","ref":"§10.14","args":{"w":null,"r":5},"expected":null},
+        {"name":"100 × 2.5","ref":"§11","args":{"w":100,"r":2.5},"expected":110},
+        {"name":"100 × 12.4","ref":"§11","args":{"w":100,"r":12.4},"expected":null},
+        {"name":"100 × 12.5","ref":"§11","args":{"w":100,"r":12.5},"expected":null},
+        {"name":"100 × 0.5","ref":"§11","args":{"w":100,"r":0.5},"expected":null},
+        {"name":"100 × 1.2","ref":"§11","args":{"w":100,"r":1.2},"expected":103.3},
+        {"name":"brzycki","ref":"§10.14","args":{"w":100,"r":5,"formula":"brzycki"},"expected":112.5},
+        {"name":"lombardi","ref":"§10.14","args":{"w":100,"r":5,"formula":"lombardi"},"expected":117.5},
+        {
+          "name": "unknown formula falls back to epley",
+          "ref": "§10.14",
+          "args": {"w":100,"r":5,"formula":"nope"},
+          "expected": 116.7
+        },
+        {"name":"100 × 1 epley","ref":"§11","args":{"w":100,"r":1,"formula":"epley"},"expected":100},
+        {"name":"100 × 2 epley","ref":"§11","args":{"w":100,"r":2,"formula":"epley"},"expected":106.7},
+        {"name":"100 × 3 epley","ref":"§11","args":{"w":100,"r":3,"formula":"epley"},"expected":110},
+        {"name":"100 × 4 epley","ref":"§11","args":{"w":100,"r":4,"formula":"epley"},"expected":113.3},
+        {"name":"100 × 5 epley","ref":"§11","args":{"w":100,"r":5,"formula":"epley"},"expected":116.7},
+        {"name":"100 × 6 epley","ref":"§11","args":{"w":100,"r":6,"formula":"epley"},"expected":120},
+        {"name":"100 × 7 epley","ref":"§11","args":{"w":100,"r":7,"formula":"epley"},"expected":123.3},
+        {"name":"100 × 8 epley","ref":"§11","args":{"w":100,"r":8,"formula":"epley"},"expected":126.7},
+        {"name":"100 × 9 epley","ref":"§11","args":{"w":100,"r":9,"formula":"epley"},"expected":130},
+        {"name":"100 × 10 epley","ref":"§11","args":{"w":100,"r":10,"formula":"epley"},"expected":133.3},
+        {"name":"100 × 11 epley","ref":"§11","args":{"w":100,"r":11,"formula":"epley"},"expected":136.7},
+        {"name":"100 × 12 epley","ref":"§11","args":{"w":100,"r":12,"formula":"epley"},"expected":140},
+        {"name":"100 × 1 brzycki","ref":"§11","args":{"w":100,"r":1,"formula":"brzycki"},"expected":100},
+        {"name":"100 × 2 brzycki","ref":"§11","args":{"w":100,"r":2,"formula":"brzycki"},"expected":102.9},
+        {"name":"100 × 3 brzycki","ref":"§11","args":{"w":100,"r":3,"formula":"brzycki"},"expected":105.9},
+        {"name":"100 × 4 brzycki","ref":"§11","args":{"w":100,"r":4,"formula":"brzycki"},"expected":109.1},
+        {"name":"100 × 5 brzycki","ref":"§11","args":{"w":100,"r":5,"formula":"brzycki"},"expected":112.5},
+        {"name":"100 × 6 brzycki","ref":"§11","args":{"w":100,"r":6,"formula":"brzycki"},"expected":116.1},
+        {"name":"100 × 7 brzycki","ref":"§11","args":{"w":100,"r":7,"formula":"brzycki"},"expected":120},
+        {"name":"100 × 8 brzycki","ref":"§11","args":{"w":100,"r":8,"formula":"brzycki"},"expected":124.1},
+        {"name":"100 × 9 brzycki","ref":"§11","args":{"w":100,"r":9,"formula":"brzycki"},"expected":128.6},
+        {"name":"100 × 10 brzycki","ref":"§11","args":{"w":100,"r":10,"formula":"brzycki"},"expected":133.3},
+        {"name":"100 × 11 brzycki","ref":"§11","args":{"w":100,"r":11,"formula":"brzycki"},"expected":138.5},
+        {"name":"100 × 12 brzycki","ref":"§11","args":{"w":100,"r":12,"formula":"brzycki"},"expected":144},
+        {"name":"100 × 1 lombardi","ref":"§11","args":{"w":100,"r":1,"formula":"lombardi"},"expected":100},
+        {"name":"100 × 2 lombardi","ref":"§11","args":{"w":100,"r":2,"formula":"lombardi"},"expected":107.2},
+        {"name":"100 × 3 lombardi","ref":"§11","args":{"w":100,"r":3,"formula":"lombardi"},"expected":111.6},
+        {"name":"100 × 4 lombardi","ref":"§11","args":{"w":100,"r":4,"formula":"lombardi"},"expected":114.9},
+        {"name":"100 × 5 lombardi","ref":"§11","args":{"w":100,"r":5,"formula":"lombardi"},"expected":117.5},
+        {"name":"100 × 6 lombardi","ref":"§11","args":{"w":100,"r":6,"formula":"lombardi"},"expected":119.6},
+        {"name":"100 × 7 lombardi","ref":"§11","args":{"w":100,"r":7,"formula":"lombardi"},"expected":121.5},
+        {"name":"100 × 8 lombardi","ref":"§11","args":{"w":100,"r":8,"formula":"lombardi"},"expected":123.1},
+        {"name":"100 × 9 lombardi","ref":"§11","args":{"w":100,"r":9,"formula":"lombardi"},"expected":124.6},
+        {"name":"100 × 10 lombardi","ref":"§11","args":{"w":100,"r":10,"formula":"lombardi"},"expected":125.9},
+        {"name":"100 × 11 lombardi","ref":"§11","args":{"w":100,"r":11,"formula":"lombardi"},"expected":127.1},
+        {"name":"100 × 12 lombardi","ref":"§11","args":{"w":100,"r":12,"formula":"lombardi"},"expected":128.2}
+      ]
+    },
+    "bestSetOf": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "highest estimate, not heaviest set",
+          "ref": "§10.15",
+          "args": {
+            "entry": {
+              "id": "x",
+              "sets": [{"w":100,"r":5,"done":true},{"w":110,"r":3,"done":true},{"w":120,"r":1,"done":true}]
+            }
+          },
+          "expected": {"est":121,"w":110,"r":3}
+        },
+        {
+          "name": "undone sets ignored",
+          "ref": "§10.15",
+          "args": {"entry":{"id":"x","sets":[{"w":100,"r":5,"done":true},{"w":200,"r":5,"done":false}]}},
+          "expected": {"est":116.7,"w":100,"r":5}
+        },
+        {
+          "name": "topW ignored",
+          "ref": "§10.15",
+          "args": {"entry":{"id":"x","topW":200,"sets":[{"w":100,"r":5,"done":true}]}},
+          "expected": {"est":116.7,"w":100,"r":5}
+        },
+        {
+          "name": "cardio",
+          "ref": "§10.15",
+          "args": {"entry":{"id":"c","sets":[{"min":20,"speed":9,"done":true}]}},
+          "expected": null
+        },
+        {
+          "name": "timed bodyweight",
+          "ref": "§10.15",
+          "args": {"entry":{"id":"p","sets":[{"sec":60,"w":0,"done":true}]}},
+          "expected": null
+        },
+        {
+          "name": "timed weighted",
+          "ref": "§10.15",
+          "args": {"entry":{"id":"p","sets":[{"sec":60,"w":20,"done":true}]}},
+          "expected": null
+        },
+        {"name":"null entry","ref":"§10.15","args":{"entry":null},"expected":null},
+        {"name":"no sets","ref":"§10.15","args":{"entry":{"sets":[]}},"expected":null},
+        {
+          "name": "ties keep the first set",
+          "args": {"entry":{"id":"x","sets":[{"w":100,"r":5,"done":true},{"w":100,"r":5,"done":true}]}},
+          "expected": {"est":116.7,"w":100,"r":5}
+        },
+        {
+          "name": "fractional reps are rounded in the result",
+          "args": {"entry":{"id":"x","sets":[{"w":"100","r":"2.5","done":true}]}},
+          "expected": {"est":110,"w":100,"r":3}
+        }
+      ]
+    },
+    "e1rmSeries": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "one point per workout with an estimate",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench"
+          },
+          "expected": [
+            {"t":1,"d":"2026-01-01","y":93.3,"w":80,"r":5},
+            {"t":3,"d":"2026-01-15","y":105,"w":90,"r":5},
+            {"t":4,"d":"2026-01-22","y":99.2,"w":85,"r":5}
+          ]
+        },
+        {
+          "name": "cardio has no series",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "run"
+          },
+          "expected": []
+        }
+      ]
+    },
+    "best1RM": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "all-time best with its set",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench"
+          },
+          "expected": {"est":105,"w":90,"r":5,"d":"2026-01-15","t":3}
+        },
+        {
+          "name": "cardio",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "run"
+          },
+          "expected": null
+        },
+        {
+          "name": "unknown exercise",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "nope"
+          },
+          "expected": null
+        },
+        {"name":"no workouts","ref":"§10.16","args":{"state":{"workouts":[]},"exId":"bench"},"expected":null},
+        {"name":"empty state","ref":"§10.16","args":{"state":{},"exId":"bench"},"expected":null},
+        {
+          "name": "equal maxima keep the earliest",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":90,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"bench","sets":[{"w":90,"r":5,"done":true}]}]}
+              ]
+            },
+            "exId": "bench"
+          },
+          "expected": {"est":105,"w":90,"r":5,"d":"2026-01-01","t":1}
+        }
+      ]
+    },
+    "is1RMRecord": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "beats every previous estimate",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench",
+            "entry": {"id":"bench","sets":[{"w":95,"r":5,"done":true}]}
+          },
+          "expected": {"est":110.8,"w":95,"r":5,"prev":105}
+        },
+        {
+          "name": "equal is not a record",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench",
+            "entry": {"id":"bench","sets":[{"w":90,"r":5,"done":true}]}
+          },
+          "expected": null
+        },
+        {
+          "name": "below",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench",
+            "entry": {"id":"bench","sets":[{"w":80,"r":5,"done":true}]}
+          },
+          "expected": null
+        },
+        {
+          "name": "first estimate ever",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "deadlift",
+            "entry": {"id":"deadlift","sets":[{"w":140,"r":3,"done":true}]}
+          },
+          "expected": {"est":154,"w":140,"r":3,"prev":0}
+        },
+        {
+          "name": "timed entry",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "plank",
+            "entry": {"id":"plank","sets":[{"sec":90,"done":true}]}
+          },
+          "expected": null
+        },
+        {
+          "name": "unfinished entry",
+          "ref": "§10.16",
+          "args": {
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","start":1,"entries":[{"id":"bench","sets":[{"w":80,"r":5,"done":true}]}]},
+                {"d":"2026-01-08","start":2,"entries":[{"id":"squat","sets":[{"w":100,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-15",
+                  "start": 3,
+                  "entries": [{"id":"bench","sets":[{"w":90,"r":5,"done":true},{"w":90,"r":3,"done":false}]}]
+                },
+                {"d":"2026-01-22","start":4,"entries":[{"id":"bench","sets":[{"w":85,"r":5,"done":true}]}]},
+                {
+                  "d": "2026-01-29",
+                  "start": 5,
+                  "entries": [{"id":"run","sets":[{"min":30,"speed":10,"done":true}]}]
+                }
+              ]
+            },
+            "exId": "bench",
+            "entry": {"id":"bench","sets":[{"w":200,"r":5,"done":false}]}
+          },
+          "expected": null
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,892 @@
+{
+  "about": "frontend/src/lib/history.js (engine.md §2, §10.18) and workout ordering (engine-Q6/Q7).",
+  "clock": {"now":1790755200000,"tz":"Europe/Madrid","today":"2026-09-30"},
+  "groups": {
+    "modeOf": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"cardio body part","ref":"§10.18","args":{"cfg":{"id":"3220"}},"expected":"cardio"},
+        {"name":"non-cardio body part","args":{"cfg":{"id":"0001"}},"expected":"reps"},
+        {"name":"unknown id","args":{"cfg":{"id":"no-such-exercise"}},"expected":"reps"},
+        {"name":"empty cfg","args":{"cfg":{}},"expected":"reps"},
+        {"name":"null cfg","args":{"cfg":null},"expected":"reps"},
+        {"name":"undefined cfg","args":{"cfg":{"$js":"undefined"}},"expected":"reps"},
+        {"name":"explicit time wins","args":{"cfg":{"id":"0001","mode":"time"}},"expected":"time"},
+        {"name":"explicit reps on cardio wins","args":{"cfg":{"id":"3220","mode":"reps"}},"expected":"reps"},
+        {"name":"explicit time on cardio wins","args":{"cfg":{"id":"3220","mode":"time"}},"expected":"time"},
+        {
+          "name": "unknown mode falls back (lift)",
+          "args": {"cfg":{"id":"0001","mode":"nonsense"}},
+          "expected": "reps"
+        },
+        {"name":"empty mode falls back (cardio)","args":{"cfg":{"id":"3220","mode":""}},"expected":"cardio"},
+        {
+          "name": "custom exercise resolves through its body part",
+          "args": {
+            "cfg": {"id":"cx-run"},
+            "customEx": [
+              {"id":"cx-run","n":"sled run","bp":"cardio","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": "cardio"
+        }
+      ]
+    },
+    "isTimed": {
+      "scope": "app",
+      "vectors": [
+        {"name":"time mode","args":{"cfg":{"id":"0001","mode":"time"}},"expected":true},
+        {"name":"no mode","args":{"cfg":{"id":"0001"}},"expected":false}
+      ]
+    },
+    "effortOf": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"effort rpe","args":{"settings":{"effort":"rpe"}},"expected":"rpe"},
+        {"name":"effort rir","args":{"settings":{"effort":"rir"}},"expected":"rir"},
+        {"name":"effort none","args":{"settings":{"effort":"none"}},"expected":"none"},
+        {"name":"empty settings","args":{"settings":{}},"expected":"none"},
+        {"name":"legacy showRir","args":{"settings":{"showRir":true}},"expected":"rir"},
+        {"name":"effort null + showRir","args":{"settings":{"effort":null,"showRir":true}},"expected":"rir"},
+        {"name":"effort null","args":{"settings":{"effort":null}},"expected":"none"},
+        {"name":"showRir false","args":{"settings":{"showRir":false}},"expected":"none"},
+        {"name":"effort beats showRir","args":{"settings":{"showRir":true,"effort":"rpe"}},"expected":"rpe"},
+        {
+          "name": "explicit none beats showRir",
+          "args": {"settings":{"showRir":true,"effort":"none"}},
+          "expected": "none"
+        },
+        {
+          "name": "overlay of stored {showRir:true}",
+          "args": {"settings":{"unit":"kg","effort":null,"showRir":true}},
+          "expected": "rir"
+        },
+        {"name":"overlay of stored {}","args":{"settings":{"unit":"kg","effort":null}},"expected":"none"},
+        {
+          "name": "overlay of stored {showRir:true, effort:undefined}",
+          "args": {"settings":{"unit":"kg","showRir":true}},
+          "expected": "rir"
+        },
+        {"name":"junk rpe10","args":{"settings":{"effort":"rpe10"}},"expected":"none"},
+        {"name":"junk RIR (case)","args":{"settings":{"effort":"RIR"}},"expected":"none"},
+        {"name":"junk f","args":{"settings":{"effort":"f"}},"expected":"none"},
+        {"name":"null settings","args":{"settings":null},"expected":"none"},
+        {
+          "name": "junk + showRir falls back",
+          "args": {"settings":{"effort":"nope","showRir":true}},
+          "expected": "rir"
+        }
+      ]
+    },
+    "stepEffort": {
+      "scope": "app",
+      "vectors": [
+        {"name":"\"rir\" null +","args":{"kind":"rir","cur":null,"dir":1},"expected":0},
+        {"name":"\"rpe\" null +","args":{"kind":"rpe","cur":null,"dir":1},"expected":6},
+        {"name":"\"rir\" 0 +","args":{"kind":"rir","cur":0,"dir":1},"expected":0.5},
+        {"name":"\"rir\" 0.5 +","args":{"kind":"rir","cur":0.5,"dir":1},"expected":1},
+        {"name":"\"rpe\" 6 +","args":{"kind":"rpe","cur":6,"dir":1},"expected":6.5},
+        {"name":"\"rir\" null −","args":{"kind":"rir","cur":null,"dir":-1},"expected":null},
+        {"name":"\"rpe\" null −","args":{"kind":"rpe","cur":null,"dir":-1},"expected":null},
+        {
+          "name": "\"rir\" {\"$js\":\"undefined\"} −",
+          "args": {"kind":"rir","cur":{"$js":"undefined"},"dir":-1},
+          "expected": null
+        },
+        {"name":"\"rir\" 0 −","args":{"kind":"rir","cur":0,"dir":-1},"expected":null},
+        {"name":"\"rpe\" 6 −","args":{"kind":"rpe","cur":6,"dir":-1},"expected":null},
+        {"name":"\"rir\" 0.5 −","args":{"kind":"rir","cur":0.5,"dir":-1},"expected":0},
+        {"name":"\"rpe\" 6.5 −","args":{"kind":"rpe","cur":6.5,"dir":-1},"expected":6},
+        {"name":"\"rir\" 9.5 +","args":{"kind":"rir","cur":9.5,"dir":1},"expected":10},
+        {"name":"\"rir\" 10 +","args":{"kind":"rir","cur":10,"dir":1},"expected":10},
+        {"name":"\"rpe\" 10 +","args":{"kind":"rpe","cur":10,"dir":1},"expected":10},
+        {
+          "name": "\"rir\" 0.30000000000000004 +",
+          "args": {"kind":"rir","cur":0.30000000000000004,"dir":1},
+          "expected": 0.8
+        },
+        {"name":"\"rpe\" 3 +","args":{"kind":"rpe","cur":3,"dir":1},"expected":3.5},
+        {"name":"\"rpe\" 3 −","args":{"kind":"rpe","cur":3,"dir":-1},"expected":null},
+        {"name":"\"none\" null +","args":{"kind":"none","cur":null,"dir":1},"expected":null},
+        {"name":"\"none\" 2 +","args":{"kind":"none","cur":2,"dir":1},"expected":2},
+        {
+          "name": "{\"$js\":\"undefined\"} 2 −",
+          "args": {"kind":{"$js":"undefined"},"cur":2,"dir":-1},
+          "expected": 2
+        },
+        {"name":"\"rpe\" 10.2 +","args":{"kind":"rpe","cur":10.2,"dir":1},"expected":10},
+        {"name":"\"rpe\" 10.2 −","args":{"kind":"rpe","cur":10.2,"dir":-1},"expected":9.7},
+        {"name":"\"rir\" 12 −","args":{"kind":"rir","cur":12,"dir":-1},"expected":11.5}
+      ]
+    },
+    "stepEffortSequence": {
+      "scope": "app",
+      "note": "Apply stepEffort(kind, value, dir) for each dir in order, starting from `start`.",
+      "vectors": [
+        {
+          "name": "six + taps on rpe from empty",
+          "args": {"kind":"rpe","start":null,"dirs":[1,1,1,1,1,1]},
+          "expected": 8.5
+        },
+        {
+          "name": "four + taps on rpe from empty",
+          "args": {"kind":"rpe","start":null,"dirs":[1,1,1,1]},
+          "expected": 7.5
+        }
+      ]
+    },
+    "capEffort": {
+      "scope": "app",
+      "vectors": [
+        {"name":"rir 12","args":{"kind":"rir","value":12},"expected":10},
+        {"name":"rpe 99","args":{"kind":"rpe","value":99},"expected":10},
+        {"name":"rpe 8","args":{"kind":"rpe","value":8},"expected":8},
+        {"name":"rpe 1","args":{"kind":"rpe","value":1},"expected":1},
+        {"name":"rir 0","args":{"kind":"rir","value":0},"expected":0},
+        {"name":"rir null","args":{"kind":"rir","value":null},"expected":null},
+        {
+          "name": "rpe {\"$js\":\"undefined\"}",
+          "args": {"kind":"rpe","value":{"$js":"undefined"}},
+          "expected": {"$js":"undefined"}
+        },
+        {"name":"none 12","args":{"kind":"none","value":12},"expected":12}
+      ]
+    },
+    "defaultConfig": {
+      "scope": "app",
+      "vectors": [
+        {
+          "name": "reps by default",
+          "args": {"id":"0001"},
+          "expected": {"sets":3,"reps":10,"weight":0,"mode":"reps"}
+        },
+        {"name":"cardio by body part","args":{"id":"3220"},"expected":{"sets":1,"min":20,"speed":8}},
+        {
+          "name": "time on request",
+          "args": {"id":"0001","mode":"time"},
+          "expected": {"sets":3,"sec":45,"weight":0,"mode":"time"}
+        }
+      ]
+    },
+    "cleanupSg": {
+      "scope": "app",
+      "note": "cleanupSg mutates its argument; `expected` is the list afterwards.",
+      "vectors": [
+        {
+          "name": "orphans lose their tag",
+          "ref": "§2.10",
+          "args": {"ex":[{"sg":"a"},{"sg":"b"},{"sg":"b"},{"sg":"c"}]},
+          "expected": [{},{"sg":"b"},{"sg":"b"},{}]
+        },
+        {
+          "name": "non-adjacent equal tags are orphans",
+          "args": {"ex":[{"id":"1","sg":"a"},{"id":"2"},{"id":"3","sg":"a"}]},
+          "expected": [{"id":"1"},{"id":"2"},{"id":"3"}]
+        },
+        {
+          "name": "three-member superset survives",
+          "args": {"ex":[{"id":"1","sg":"a"},{"id":"2","sg":"a"},{"id":"3","sg":"a"},{"id":"4"}]},
+          "expected": [{"id":"1","sg":"a"},{"id":"2","sg":"a"},{"id":"3","sg":"a"},{"id":"4"}]
+        }
+      ]
+    },
+    "supersetUnits": {
+      "scope": "app",
+      "vectors": [
+        {
+          "name": "groups consecutive equal tags",
+          "ref": "§2.16",
+          "args": {"items":[{},{"sg":"a"},{"sg":"a"},{"sg":"b"},{"sg":"a"},{}]},
+          "expected": [[0],[1,2],[3],[4],[5]]
+        },
+        {"name":"empty","args":{"items":[]},"expected":[]}
+      ]
+    },
+    "lastEntryFor": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "latest entry with a done set, done sets only",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"reps":5},
+                      "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"reps":5,"mode":"reps"},
+                      "sets": [{"w":62.5,"r":5,"done":true},{"w":62.5,"r":3,"done":false}]
+                    }
+                  ]
+                },
+                {"d":"2026-01-03","entries":[{"id":"0001","sets":[{"w":65,"r":0,"done":false}]}]}
+              ]
+            }
+          },
+          "expected": {
+            "d": "2026-01-02",
+            "sets": [{"w":62.5,"r":5,"done":true}],
+            "target": {"sets":2,"reps":5,"mode":"reps"}
+          }
+        },
+        {
+          "name": "first entry of the id inside a workout; missing target reads as null",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {"id":"0001","sets":[{"w":40,"r":8,"done":true}]},
+                    {"id":"0001","sets":[{"w":99,"r":1,"done":true}]}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": {"d":"2026-01-01","sets":[{"w":40,"r":8,"done":true}],"target":null}
+        },
+        {"name":"never logged","args":{"exId":"0001","state":{"workouts":[]}},"expected":null}
+      ]
+    },
+    "bestWeightFor": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "heaviest done set or confirmed topW",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {"id":"0001","topW":70,"sets":[{"w":60,"r":5,"done":true},{"w":80,"r":5,"done":false}]}
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [{"id":"0001","target":{"mode":"reps"},"sets":[{"w":65,"r":5,"done":true}]}]
+                }
+              ]
+            }
+          },
+          "expected": 70
+        },
+        {
+          "name": "a weighted timed entry does not count (target mode time)",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","entries":[{"id":"0001","sets":[{"w":40,"r":8,"done":true}]}]},
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":1,"sec":60,"mode":"time"},
+                      "sets": [{"sec":60,"w":50,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": 40,
+          "fix": "engine-Q5",
+          "original": 50
+        },
+        {
+          "name": "a timed entry with only topW does not count",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {"id":"0001","topW":30,"target":{"mode":"time"},"sets":[{"sec":45,"w":0,"done":true}]}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": 0,
+          "fix": "engine-Q5",
+          "original": 30
+        },
+        {
+          "name": "cardio by body part never counts",
+          "args": {
+            "exId": "3220",
+            "state": {
+              "workouts": [
+                {"d":"2026-01-01","entries":[{"id":"3220","sets":[{"min":20,"speed":9,"w":5,"done":true}]}]}
+              ]
+            }
+          },
+          "expected": 0,
+          "fix": "engine-Q5",
+          "original": 5
+        },
+        {
+          "name": "a cardio exercise logged in explicit reps mode counts",
+          "args": {
+            "exId": "3220",
+            "state": {
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {"id":"3220","target":{"mode":"reps","reps":10},"sets":[{"w":20,"r":10,"done":true}]}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": 20
+        },
+        {"name":"nothing logged","args":{"exId":"0001","state":{"workouts":[]}},"expected":0}
+      ]
+    },
+    "effectiveRoutineId": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "Monday overridden to rest",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-28"
+          },
+          "expected": null
+        },
+        {
+          "name": "Tuesday rescheduled to an existing routine",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-29"
+          },
+          "expected": "r1"
+        },
+        {
+          "name": "override to a deleted routine falls back to the week",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-30"
+          },
+          "expected": "r2"
+        },
+        {
+          "name": "the week may hold a stale id",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-02"
+          },
+          "expected": "gone"
+        },
+        {
+          "name": "Saturday with nothing planned",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-03"
+          },
+          "expected": null
+        },
+        {
+          "name": "Sunday (weekday 0) with nothing planned",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-04"
+          },
+          "expected": null
+        },
+        {
+          "name": "Monday from the week",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-05"
+          },
+          "expected": "r1"
+        }
+      ]
+    },
+    "effectiveRoutine": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "Monday overridden to rest",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-28"
+          },
+          "expected": null
+        },
+        {
+          "name": "Tuesday rescheduled to an existing routine",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-29"
+          },
+          "expected": {"id":"r1","name":"Empuje","ex":[]}
+        },
+        {
+          "name": "override to a deleted routine falls back to the week",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-09-30"
+          },
+          "expected": {"id":"r2","name":"Tirón","ex":[]}
+        },
+        {
+          "name": "the week may hold a stale id",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-02"
+          },
+          "expected": null
+        },
+        {
+          "name": "Saturday with nothing planned",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-03"
+          },
+          "expected": null
+        },
+        {
+          "name": "Sunday (weekday 0) with nothing planned",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-04"
+          },
+          "expected": null
+        },
+        {
+          "name": "Monday from the week",
+          "args": {
+            "plan": {
+              "routines": [{"id":"r1","name":"Empuje","ex":[]},{"id":"r2","name":"Tirón","ex":[]}],
+              "week": {"1":"r1","3":"r2","5":"gone"},
+              "dayPlan": {"2026-09-28":"rest","2026-09-29":"r1","2026-09-30":"gone"}
+            },
+            "date": "2026-10-05"
+          },
+          "expected": {"id":"r1","name":"Empuje","ex":[]}
+        }
+      ]
+    },
+    "buildSets": {
+      "scope": "app",
+      "vectors": [
+        {
+          "name": "reps from the plan without history",
+          "ref": "§10.18",
+          "args": {"state":{"workouts":[],"exWeights":{}},"cfg":{"id":"0001","sets":3,"reps":8,"weight":50}},
+          "expected": [{"w":50,"r":8,"done":false},{"w":50,"r":8,"done":false},{"w":50,"r":8,"done":false}]
+        },
+        {
+          "name": "timed from the plan without history",
+          "args": {
+            "state": {"workouts":[],"exWeights":{}},
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":60,"weight":20}
+          },
+          "expected": [{"sec":60,"w":20,"done":false},{"sec":60,"w":20,"done":false}]
+        },
+        {
+          "name": "cardio from the plan without history",
+          "args": {"state":{"workouts":[],"exWeights":{}},"cfg":{"id":"3220","sets":1,"min":25,"speed":9}},
+          "expected": [{"min":25,"speed":9,"done":false}]
+        },
+        {
+          "name": "carries a timed set forward (history.test.js:288, target without sec)",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [{"id":"0001","target":{"mode":"time"},"sets":[{"sec":70,"w":10,"done":true}]}]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"weight":0}
+          },
+          "expected": [{"sec":70,"w":10,"done":false},{"sec":70,"w":10,"done":false}]
+        },
+        {
+          "name": "no duration seeded from a rep set",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [{"d":"2026-01-01","entries":[{"id":"0001","sets":[{"w":60,"r":10,"done":true}]}]}]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":1,"sec":45,"weight":0}
+          },
+          "expected": [{"sec":45,"w":0,"done":false}]
+        },
+        {
+          "name": "no reps seeded from a timed set",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [{"id":"0001","target":{"mode":"time"},"sets":[{"sec":70,"w":10,"done":true}]}]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"reps","sets":1,"reps":8,"weight":40}
+          },
+          "expected": [{"w":40,"r":8,"done":false}]
+        },
+        {
+          "name": "working weight beats last session (history.test.js:306, no target)",
+          "args": {
+            "state": {
+              "exWeights": {"0001":{"w":75}},
+              "workouts": [{"d":"2026-01-01","entries":[{"id":"0001","sets":[{"w":60,"r":10,"done":true}]}]}]
+            },
+            "cfg": {"id":"0001","sets":1,"reps":8,"weight":50}
+          },
+          "expected": [{"w":75,"r":10,"done":false}]
+        },
+        {
+          "name": "extra planned sets reuse the final done set",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":10,"done":true},
+                        {"w":62.5,"r":8,"done":true},
+                        {"w":62.5,"r":8,"done":false}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":4,"reps":5,"weight":50}
+          },
+          "expected": [
+            {"w":60,"r":10,"done":false},
+            {"w":62.5,"r":8,"done":false},
+            {"w":62.5,"r":8,"done":false},
+            {"w":62.5,"r":8,"done":false}
+          ]
+        },
+        {
+          "name": "a done set with 0 reps is not usable: plan values",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [{"d":"2026-01-01","entries":[{"id":"0001","sets":[{"w":60,"r":0,"done":true}]}]}]
+            },
+            "cfg": {"id":"0001","sets":1,"reps":5,"weight":50}
+          },
+          "expected": [{"w":50,"r":5,"done":false}]
+        },
+        {
+          "name": "cardio carries last minutes and speed",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {"d":"2026-01-01","entries":[{"id":"3220","sets":[{"min":30,"speed":10,"done":true}]}]}
+              ]
+            },
+            "cfg": {"id":"3220","sets":2,"min":20,"speed":8}
+          },
+          "expected": [{"min":30,"speed":10,"done":false},{"min":30,"speed":10,"done":false}]
+        },
+        {
+          "name": "plan reps changed since last session: reps come from the plan",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"id":"0001","mode":"reps","sets":2,"reps":5,"weight":60},
+                      "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"reps","sets":2,"reps":8,"weight":60}
+          },
+          "expected": [{"w":60,"r":8,"done":false},{"w":60,"r":8,"done":false}],
+          "fix": "critic-G3",
+          "original": [{"w":60,"r":5,"done":false},{"w":60,"r":5,"done":false}]
+        },
+        {
+          "name": "plan reps changed: the working weight still wins for w",
+          "args": {
+            "state": {
+              "exWeights": {"0001":{"w":75,"d":"2026-01-01"}},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"id":"0001","mode":"reps","sets":1,"reps":10},
+                      "sets": [{"w":60,"r":10,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":1,"reps":8,"weight":50}
+          },
+          "expected": [{"w":75,"r":8,"done":false}],
+          "fix": "critic-G3",
+          "original": [{"w":75,"r":10,"done":false}]
+        },
+        {
+          "name": "plan seconds changed since last session: seconds come from the plan",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"id":"0001","mode":"time","sets":2,"sec":45},
+                      "sets": [{"sec":45,"w":10,"done":true},{"sec":40,"w":10,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":60,"weight":0}
+          },
+          "expected": [{"sec":60,"w":10,"done":false},{"sec":60,"w":10,"done":false}],
+          "fix": "critic-G3",
+          "original": [{"sec":45,"w":10,"done":false},{"sec":40,"w":10,"done":false}]
+        },
+        {
+          "name": "unchanged plan reps: last session reps as before",
+          "args": {
+            "state": {
+              "exWeights": {},
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"id":"0001","mode":"reps","sets":1,"reps":8},
+                      "sets": [{"w":60,"r":9,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"reps","sets":1,"reps":8,"weight":60}
+          },
+          "expected": [{"w":60,"r":9,"done":false}]
+        }
+      ]
+    },
+    "applyPrescription": {
+      "scope": "app",
+      "note": "`sameInstance` is true when the function must return the very list it was given.",
+      "vectors": [
+        {
+          "name": "only undone sets, only decided fields",
+          "ref": "§10.13",
+          "args": {
+            "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+            "prescription": {"kind":"up","weight":62.5}
+          },
+          "expected": [{"w":60,"r":5,"done":true},{"w":62.5,"r":5,"done":false}],
+          "sameInstance": false
+        },
+        {
+          "name": "reps too when decided",
+          "args": {
+            "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+            "prescription": {"kind":"up","weight":42.5,"reps":8}
+          },
+          "expected": [{"w":60,"r":5,"done":true},{"w":42.5,"r":8,"done":false}],
+          "sameInstance": false
+        },
+        {
+          "name": "off returns the same list",
+          "args": {
+            "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+            "prescription": {"kind":"off"}
+          },
+          "expected": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+          "sameInstance": true
+        },
+        {
+          "name": "first returns the same list",
+          "args": {
+            "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+            "prescription": {"kind":"first"}
+          },
+          "expected": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+          "sameInstance": true
+        },
+        {
+          "name": "null returns the same list",
+          "args": {"sets":[{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],"prescription":null},
+          "expected": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":false}],
+          "sameInstance": true
+        },
+        {
+          "name": "timed set",
+          "args": {"sets":[{"sec":45,"w":0,"done":false}],"prescription":{"kind":"up","sec":50}},
+          "expected": [{"sec":50,"w":0,"done":false}],
+          "sameInstance": false
+        }
+      ]
+    },
+    "workoutVolume": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "reps only; timed and cardio sets add nothing",
+          "ref": "§10.18",
+          "args": {
+            "workout": {
+              "entries": [
+                {"id":"0001","sets":[{"w":60,"r":10,"done":true},{"w":60,"r":10,"done":false}]},
+                {"id":"0001","target":{"mode":"time"},"sets":[{"sec":60,"w":20,"done":true}]},
+                {"id":"3220","sets":[{"min":20,"speed":9,"done":true}]}
+              ]
+            }
+          },
+          "expected": 600
+        }
+      ]
+    },
+    "setsDone": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "counts done sets across entries",
+          "args": {
+            "workout": {
+              "entries": [
+                {"id":"0001","sets":[{"w":60,"r":10,"done":true},{"w":60,"r":10,"done":false}]},
+                {"id":"3220","sets":[{"min":20,"speed":9,"done":true}]}
+              ]
+            }
+          },
+          "expected": 2
+        }
+      ]
+    },
+    "linkSuperset": {
+      "scope": "app",
+      "fix": "coach-B3",
+      "note": "Apply `superset` changes {link: true, with} to routine `ex`, one per [exId, with] pair in `links`, in order. `expected.ids` is the order afterwards; `expected.sg` gives each position a letter shared by exactly the positions that must share one tag, or null for no tag. Tags are fresh (\"sg\" + uid()), never equal to a tag already in the routine.",
+      "vectors": [
+        {
+          "name": "the partner moves next to the exercise",
+          "args": {"ex":[{"id":"0001"},{"id":"0007"},{"id":"0009"}],"links":[["0001","0009"]]},
+          "expected": {"ids":["0001","0009","0007"],"sg":["A","A",null]}
+        },
+        {
+          "name": "two links in one change set get two tags",
+          "args": {"ex":[{"id":"1"},{"id":"2"},{"id":"3"},{"id":"4"}],"links":[["1","2"],["3","4"]]},
+          "expected": {"ids":["1","2","3","4"],"sg":["A","A","B","B"]}
+        },
+        {
+          "name": "the previous partner loses its orphaned tag",
+          "args": {"ex":[{"id":"1","sg":"old"},{"id":"2","sg":"old"},{"id":"3"}],"links":[["2","3"]]},
+          "expected": {"ids":["1","2","3"],"sg":[null,"A","A"]}
+        }
+      ]
+    }
+  },
+  "constants": {
+    "EFFORT": {
+      "rir": {"f":"rir","hd":"RIR","step":0.5,"min":0,"max":10},
+      "rpe": {"f":"rpe","hd":"RPE","step":0.5,"min":6,"max":10}
+    }
+  }
+}

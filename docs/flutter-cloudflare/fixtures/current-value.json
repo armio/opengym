@@ -1,0 +1,288 @@
+{
+  "about": "currentValue(plan, change) (coach.md §7.2): the plan value a scalar change is about; `{\"$js\":\"undefined\"}` for structural types.",
+  "plan": {
+    "routines": [
+      {
+        "id": "r1",
+        "name": "Full body A",
+        "emoji": "💪",
+        "prog": "linear",
+        "ex": [
+          {"id":"0001","sets":3,"reps":10,"mode":"reps","weight":20,"prog":"linear","repsMin":8,"inc":2.5},
+          {"id":"0007","sets":3,"sec":45,"mode":"time"},
+          {"id":"0009","sets":3,"reps":12,"mode":"reps"}
+        ]
+      },
+      {"id":"r2","name":"Full body B","ex":[{"id":"0002","sets":4,"reps":6,"mode":"reps"}]}
+    ],
+    "week": {"1":"r1","3":"r2","5":"r1"},
+    "customEx": []
+  },
+  "vectors": [
+    {
+      "name": "sets",
+      "change": {
+        "id": "c1",
+        "type": "sets",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": 3
+    },
+    {
+      "name": "reps",
+      "change": {
+        "id": "c1",
+        "type": "reps",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": 10
+    },
+    {
+      "name": "repsMin",
+      "change": {
+        "id": "c1",
+        "type": "repsMin",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": 8
+    },
+    {
+      "name": "repsMin unset",
+      "change": {
+        "id": "c1",
+        "type": "repsMin",
+        "target": {"routineId":"r1","exId":"0009"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "sec",
+      "change": {
+        "id": "c1",
+        "type": "sec",
+        "target": {"routineId":"r1","exId":"0007"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": 45
+    },
+    {
+      "name": "sec unset on a reps exercise",
+      "change": {
+        "id": "c1",
+        "type": "sec",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "inc",
+      "change": {
+        "id": "c1",
+        "type": "inc",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": 2.5
+    },
+    {
+      "name": "inc unset",
+      "change": {
+        "id": "c1",
+        "type": "inc",
+        "target": {"routineId":"r2","exId":"0002"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "exercise-prog",
+      "change": {
+        "id": "c1",
+        "type": "exercise-prog",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": "linear"
+    },
+    {
+      "name": "exercise-prog unset",
+      "change": {
+        "id": "c1",
+        "type": "exercise-prog",
+        "target": {"routineId":"r1","exId":"0007"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "routine-prog",
+      "change": {"id":"c1","type":"routine-prog","target":{"routineId":"r1"},"before":3,"after":4,"why":"x"},
+      "expected": "linear"
+    },
+    {
+      "name": "routine-prog unset",
+      "change": {"id":"c1","type":"routine-prog","target":{"routineId":"r2"},"before":3,"after":4,"why":"x"},
+      "expected": null
+    },
+    {
+      "name": "rename-routine",
+      "change": {"id":"c1","type":"rename-routine","target":{"routineId":"r2"},"before":3,"after":4,"why":"x"},
+      "expected": "Full body B"
+    },
+    {
+      "name": "week, planned day",
+      "change": {"id":"c1","type":"week","target":{"weekday":1},"before":3,"after":4,"why":"x"},
+      "expected": "r1"
+    },
+    {
+      "name": "week, rest day",
+      "change": {"id":"c1","type":"week","target":{"weekday":6},"before":3,"after":4,"why":"x"},
+      "expected": null
+    },
+    {
+      "name": "sets on a missing exercise",
+      "change": {
+        "id": "c1",
+        "type": "sets",
+        "target": {"routineId":"r1","exId":"ghost"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "sets on a missing routine",
+      "change": {
+        "id": "c1",
+        "type": "sets",
+        "target": {"routineId":"ghost","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": null
+    },
+    {
+      "name": "add-exercise is structural",
+      "change": {
+        "id": "c1",
+        "type": "add-exercise",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "remove-exercise is structural",
+      "change": {
+        "id": "c1",
+        "type": "remove-exercise",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "swap-exercise is structural",
+      "change": {
+        "id": "c1",
+        "type": "swap-exercise",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "cardio is structural",
+      "change": {
+        "id": "c1",
+        "type": "cardio",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "reorder is structural",
+      "change": {
+        "id": "c1",
+        "type": "reorder",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "superset is structural",
+      "change": {
+        "id": "c1",
+        "type": "superset",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "add-routine is structural",
+      "change": {
+        "id": "c1",
+        "type": "add-routine",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    },
+    {
+      "name": "remove-routine is structural",
+      "change": {
+        "id": "c1",
+        "type": "remove-routine",
+        "target": {"routineId":"r1","exId":"0001"},
+        "before": 3,
+        "after": 4,
+        "why": "x"
+      },
+      "expected": {"$js":"undefined"}
+    }
+  ]
+}

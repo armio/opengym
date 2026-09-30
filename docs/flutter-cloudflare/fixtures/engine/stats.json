@@ -1,0 +1,26 @@
+{
+  "about": "Stats-screen logic that lives in UI files (engine.md §8).",
+  "groups": {
+    "heatmap": {
+      "scope": "app",
+      "note": "Given the minutes of every trained day, t1/t2/t3 are quartiles of the positive ones; `levels` maps each probe (minutes, or null for no workout) to 0..4.",
+      "vectors": [
+        {
+          "name": "eight days",
+          "ref": "§11",
+          "args": {
+            "days": [{"min":10},{"min":20},{"min":30},{"min":40},{"min":50},{"min":60},{"min":70},{"min":80}],
+            "probes": [25,30,55,70,0,null]
+          },
+          "expected": {"t1":30,"t2":50,"t3":70,"levels":[1,2,3,4,1,0]}
+        },
+        {
+          "name": "a single day",
+          "ref": "§11",
+          "args": {"days":[{"min":45}],"probes":[45]},
+          "expected": {"t1":45,"t2":45,"t3":45,"levels":[4]}
+        }
+      ]
+    }
+  }
+}

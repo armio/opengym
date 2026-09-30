@@ -3,7 +3,7 @@ media/img/
 media/gif/
 
 # Runtime data — users, passkeys, per-user state, session secret
-data/
+/data/
 
 # Local config
 .env

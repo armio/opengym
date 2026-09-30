@@ -1,0 +1,3659 @@
+{
+  "about": "validatePlan(data, ctx) and validateReview(data, plan) exactly as api/coach/validate.js (coach.md §6). Every expected value is the original's full result. validateReview vectors all use `plan`.",
+  "constants": {
+    "CHANGE_TYPES": [
+      "add-exercise",
+      "remove-exercise",
+      "swap-exercise",
+      "sets",
+      "reps",
+      "repsMin",
+      "sec",
+      "cardio",
+      "reorder",
+      "superset",
+      "routine-prog",
+      "exercise-prog",
+      "inc",
+      "add-routine",
+      "remove-routine",
+      "rename-routine",
+      "week"
+    ]
+  },
+  "plan": {
+    "routines": [
+      {"id":"r1","name":"Full body A","ex":[{"id":"0001","sets":3,"reps":10},{"id":"0007","sets":3,"sec":45}]},
+      {"id":"r2","name":"Full body B","ex":[{"id":"0009","sets":3,"reps":8}]}
+    ],
+    "week": {"1":"r1","3":"r2"}
+  },
+  "groups": {
+    "validatePlan": {
+      "vectors": [
+        {
+          "name": "unknown exercise id is rejected",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "routines": [
+                {"name":"A","ex":[{"id":"0001","sets":3,"reps":10},{"id":"not-a-real-id","sets":3,"reps":10}]}
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].ex[1].id \"not-a-real-id\" is not in the exercise library and is not one of your own customEx entries — use an id from the library provided in the payload"
+            ]
+          }
+        },
+        {
+          "name": "custom exercise defined in the answer",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "routines": [{"name":"A","ex":[{"id":"cx1","sets":3,"reps":10}]}],
+              "customEx": [{"id":"cx1","n":"Sandbag carry","bp":"back"}]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {"id":"r0","name":"A","emoji":"🏋️","ex":[{"id":"cx1","sets":3,"mode":"reps","reps":10}]}
+              ],
+              "customEx": [{"id":"cx1","n":"Sandbag carry","bp":"back"}]
+            }
+          }
+        },
+        {
+          "name": "week points at an unknown routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "routines": [{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10}]}],
+              "week": {"1":"ghost"}
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["week[1] points at \"ghost\", which is not one of the routines in this plan"]
+          }
+        },
+        {
+          "name": "weight capped at the best",
+          "ref": "§6.4",
+          "args": {
+            "data": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10,"weight":100}]}]},
+            "ctx": {"workingWeights":[{"id":"0001","best":40}]}
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {
+                  "id": "r1",
+                  "name": "A",
+                  "emoji": "🏋️",
+                  "ex": [{"id":"0001","sets":3,"mode":"reps","reps":10,"weight":40}]
+                }
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "days per week enforced",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "routines": [{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10}]}],
+              "week": {"1":"r1","2":"r1","3":"r1","4":"r1"}
+            },
+            "ctx": {"daysPerWeek":3}
+          },
+          "expected": {"ok":false,"errors":["the week schedules 4 days but 3 were asked for"]}
+        },
+        {
+          "name": "unknown routine policy",
+          "ref": "§6.4",
+          "args": {"data":{"routines":[{"name":"A","prog":"vibes","ex":[{"id":"0001","sets":3,"reps":10}]}]}},
+          "expected": {
+            "ok": false,
+            "errors": ["routines[0].prog \"vibes\" is not one of off, linear, greyskull, double, time"]
+          }
+        },
+        {
+          "name": "P1 null",
+          "args": {"data":null},
+          "expected": {"ok":false,"errors":["the answer was not an object"]}
+        },
+        {
+          "name": "P1 string",
+          "args": {"data":"plan"},
+          "expected": {"ok":false,"errors":["the answer was not an object"]}
+        },
+        {
+          "name": "P1 array is an object without routines",
+          "args": {"data":[]},
+          "expected": {"ok":false,"errors":["routines must be a non-empty array"]}
+        },
+        {
+          "name": "P2 nochange",
+          "args": {"data":{"nochange":true,"routines":[{"name":"A","ex":[{"id":"0001"}]}]}},
+          "expected": {"ok":false,"errors":["a plan was requested but the answer said \"no change\""]}
+        },
+        {
+          "name": "P3 empty routines",
+          "args": {"data":{"routines":[]}},
+          "expected": {"ok":false,"errors":["routines must be a non-empty array"]}
+        },
+        {
+          "name": "P3 missing routines",
+          "args": {"data":{}},
+          "expected": {"ok":false,"errors":["routines must be a non-empty array"]}
+        },
+        {
+          "name": "P4 customEx normalised, invalid dropped, clamped",
+          "args": {
+            "data": {
+              "routines": [{"name":"A","ex":[{"id":"cx1"},{"id":"cx2"}]}],
+              "customEx": [
+                null,
+                {"id":"cx0"},
+                {"id":" ","n":"blank id"},
+                {
+                  "id": "cx1",
+                  "n": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                  "desc": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+                },
+                {"id":"cx2","n":"Two","bp":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","desc":""}
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {
+                  "id": "r0",
+                  "name": "A",
+                  "emoji": "🏋️",
+                  "ex": [
+                    {"id":"cx1","sets":3,"mode":"reps","reps":10},
+                    {"id":"cx2","sets":3,"mode":"reps","reps":10}
+                  ]
+                }
+              ],
+              "customEx": [
+                {
+                  "id": "cx1",
+                  "n": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                  "bp": "waist",
+                  "desc": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+                },
+                {"id":"cx2","n":"Two","bp":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "P4 at most 20 customEx",
+          "args": {
+            "data": {
+              "routines": [{"name":"A","ex":[{"id":"c20"}]}],
+              "customEx": [
+                {"id":"c0","n":"n0"},
+                {"id":"c1","n":"n1"},
+                {"id":"c2","n":"n2"},
+                {"id":"c3","n":"n3"},
+                {"id":"c4","n":"n4"},
+                {"id":"c5","n":"n5"},
+                {"id":"c6","n":"n6"},
+                {"id":"c7","n":"n7"},
+                {"id":"c8","n":"n8"},
+                {"id":"c9","n":"n9"},
+                {"id":"c10","n":"n10"},
+                {"id":"c11","n":"n11"},
+                {"id":"c12","n":"n12"},
+                {"id":"c13","n":"n13"},
+                {"id":"c14","n":"n14"},
+                {"id":"c15","n":"n15"},
+                {"id":"c16","n":"n16"},
+                {"id":"c17","n":"n17"},
+                {"id":"c18","n":"n18"},
+                {"id":"c19","n":"n19"},
+                {"id":"c20","n":"n20"}
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].ex[0].id \"c20\" is not in the exercise library and is not one of your own customEx entries — use an id from the library provided in the payload",
+              "routines[0] has no valid exercises"
+            ]
+          }
+        },
+        {
+          "name": "P5 only the first 7 routines",
+          "args": {
+            "data": {
+              "routines": [
+                {"id":"r0","name":"R0","ex":[{"id":"0001"}]},
+                {"id":"r1","name":"R1","ex":[{"id":"0001"}]},
+                {"id":"r2","name":"R2","ex":[{"id":"0001"}]},
+                {"id":"r3","name":"R3","ex":[{"id":"0001"}]},
+                {"id":"r4","name":"R4","ex":[{"id":"0001"}]},
+                {"id":"r5","name":"R5","ex":[{"id":"0001"}]},
+                {"id":"r6","name":"R6","ex":[{"id":"0001"}]},
+                {"id":"r7","name":"R7","ex":[{"id":"0001"}]}
+              ],
+              "week": {"0":"r7"}
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["week[0] points at \"r7\", which is not one of the routines in this plan"]
+          }
+        },
+        {
+          "name": "P6 routine not an object",
+          "args": {"data":{"routines":[null,"x",{"name":"A","ex":[{"id":"0001"}]}]}},
+          "expected": {"ok":false,"errors":["routines[0] is not an object","routines[1] is not an object"]}
+        },
+        {
+          "name": "P7 routine name required",
+          "args": {"data":{"routines":[{"ex":[{"id":"0001"}]},{"name":"  ","ex":[{"id":"0001"}]}]}},
+          "expected": {"ok":false,"errors":["routines[0].name is required","routines[1].name is required"]}
+        },
+        {
+          "name": "P9 only the first 20 exercises",
+          "args": {
+            "data": {
+              "routines": [
+                {
+                  "name": "A",
+                  "ex": [
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"0001"},
+                    {"id":"nope"}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {
+                  "id": "r0",
+                  "name": "A",
+                  "emoji": "🏋️",
+                  "ex": [
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"reps","reps":10}
+                  ]
+                }
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "P10 exercise id required",
+          "args": {"data":{"routines":[{"name":"A","ex":[null,{},{"id":""},{"id":7},{"id":"0001"}]}]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0].ex[0].id is required",
+              "routines[0].ex[1].id is required",
+              "routines[0].ex[2].id is required",
+              "routines[0].ex[3].id is required"
+            ]
+          }
+        },
+        {
+          "name": "P12 numbers defaulted per mode",
+          "args": {
+            "data": {
+              "routines": [
+                {
+                  "name": "A",
+                  "ex": [
+                    {"id":"0001","sets":0,"reps":"8","weight":-5},
+                    {"id":"0001","mode":"time","sets":11,"sec":4,"weight":12.5},
+                    {"id":"3220","mode":"cardio","sets":2.5,"min":181,"speed":-1,"weight":9},
+                    {"id":"3220","min":30,"speed":10},
+                    {"id":"0001","mode":"time","sec":3600,"weight":{"$js":"Infinity"}},
+                    {"id":"0001","reps":100,"sets":10,"weight":0.5,"inc":0,"repsMin":101,"sg":" ","why":" "}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {
+                  "id": "r0",
+                  "name": "A",
+                  "emoji": "🏋️",
+                  "ex": [
+                    {"id":"0001","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"time","sec":45,"weight":12.5},
+                    {"id":"3220","sets":3,"min":20,"speed":8},
+                    {"id":"3220","sets":3,"mode":"reps","reps":10},
+                    {"id":"0001","sets":3,"mode":"time","sec":3600},
+                    {"id":"0001","sets":10,"mode":"reps","reps":100,"weight":0.5}
+                  ]
+                }
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "P13 exercise policy",
+          "args": {
+            "data": {
+              "routines": [
+                {
+                  "name": "A",
+                  "ex": [
+                    {"id":"0001","prog":"vibes"},
+                    {
+                      "id": "0001",
+                      "prog": "double",
+                      "inc": 1.25,
+                      "repsMin": 6,
+                      "sg": "abcdefghijklmnopqrstuvwxyz",
+                      "why": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["routines[0].ex[0].prog \"vibes\" is not one of off, linear, greyskull, double, time"]
+          }
+        },
+        {
+          "name": "P14 no valid exercises",
+          "args": {"data":{"routines":[{"name":"A","ex":[]},{"name":"B"},{"name":"C","ex":[{"id":"nope"}]}]}},
+          "expected": {
+            "ok": false,
+            "errors": [
+              "routines[0] has no valid exercises",
+              "routines[1] has no valid exercises",
+              "routines[2].ex[0].id \"nope\" is not in the exercise library and is not one of your own customEx entries — use an id from the library provided in the payload",
+              "routines[2] has no valid exercises"
+            ]
+          }
+        },
+        {
+          "name": "P15 week keys",
+          "args": {
+            "data": {
+              "routines": [{"id":"r1","name":"A","ex":[{"id":"0001"}]}],
+              "week": {"2":"r1","7":"r1","x":"r1","-1":"r1","1.5":"r1"}
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "week key \"7\" is not a weekday number 0-6",
+              "week key \"x\" is not a weekday number 0-6",
+              "week key \"-1\" is not a weekday number 0-6",
+              "week key \"1.5\" is not a weekday number 0-6"
+            ]
+          }
+        },
+        {
+          "name": "P16 week values",
+          "args": {
+            "data": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001"}]}],"week":{"1":null,"2":"r1"}}
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["week[1] points at \"null\", which is not one of the routines in this plan"]
+          }
+        },
+        {
+          "name": "P17 cap only above the best, per id",
+          "args": {
+            "data": {
+              "routines": [
+                {
+                  "name": "A",
+                  "ex": [
+                    {"id":"0001","weight":30},
+                    {"id":"0025","weight":90},
+                    {"id":"0007","mode":"time","weight":50}
+                  ]
+                }
+              ]
+            },
+            "ctx": {
+              "workingWeights": [{"id":"0001","best":40},{"id":"0025","best":80},{"id":"0007","best":20}]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {
+                  "id": "r0",
+                  "name": "A",
+                  "emoji": "🏋️",
+                  "ex": [
+                    {"id":"0001","sets":3,"mode":"reps","reps":10,"weight":30},
+                    {"id":"0025","sets":3,"mode":"reps","reps":10,"weight":80},
+                    {"id":"0007","sets":3,"mode":"time","sec":45,"weight":20}
+                  ]
+                }
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "P18 skipped for an empty week",
+          "args": {"data":{"routines":[{"id":"r1","name":"A","ex":[{"id":"0001"}]}]},"ctx":{"daysPerWeek":3}},
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {"id":"r1","name":"A","emoji":"🏋️","ex":[{"id":"0001","sets":3,"mode":"reps","reps":10}]}
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "P18 skipped for a daysPerWeek outside 1..7",
+          "args": {
+            "data": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001"}]}],"week":{"1":"r1"}},
+            "ctx": {"daysPerWeek":0}
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {"1":"r1"},
+              "routines": [
+                {"id":"r1","name":"A","emoji":"🏋️","ex":[{"id":"0001","sets":3,"mode":"reps","reps":10}]}
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "P18 matching count",
+          "args": {
+            "data": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001"}]}],"week":{"1":"r1","4":"r1"}},
+            "ctx": {"daysPerWeek":2}
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {"1":"r1","4":"r1"},
+              "routines": [
+                {"id":"r1","name":"A","emoji":"🏋️","ex":[{"id":"0001","sets":3,"mode":"reps","reps":10}]}
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "full bundle normalisation",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "opengym_plan": 1,
+              "name": "Plan Plan Plan Plan Plan Plan Plan Plan Plan Plan ",
+              "summary": "S",
+              "basedOn": "no history yet",
+              "week": {"1":"up","4":"r1"},
+              "routines": [
+                {
+                  "id": "up",
+                  "name": "Upper",
+                  "emoji": "💪",
+                  "prog": "linear",
+                  "why": "Balanced.",
+                  "ex": [
+                    {
+                      "id": "0025",
+                      "sets": 4,
+                      "mode": "reps",
+                      "reps": 6,
+                      "weight": 60,
+                      "prog": "double",
+                      "inc": 2.5,
+                      "repsMin": 4,
+                      "sg": "a",
+                      "why": "Main lift."
+                    },
+                    {"id":"0001","sets":3,"reps":15,"sg":"a"}
+                  ]
+                },
+                {
+                  "name": "Conditioning",
+                  "emoji": "👨‍👩‍👧‍👦 extra",
+                  "ex": [
+                    {"id":"3220","mode":"cardio","min":20,"speed":8.5},
+                    {"id":"0007","mode":"time","sec":60}
+                  ]
+                }
+              ],
+              "customEx": []
+            },
+            "ctx": {"daysPerWeek":2}
+          },
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Plan Plan Plan Plan Plan Plan Plan Plan ",
+              "summary": "S",
+              "basedOn": "no history yet",
+              "week": {"1":"up","4":"r1"},
+              "routines": [
+                {
+                  "id": "up",
+                  "name": "Upper",
+                  "emoji": "💪",
+                  "prog": "linear",
+                  "why": "Balanced.",
+                  "ex": [
+                    {
+                      "id": "0025",
+                      "sets": 4,
+                      "mode": "reps",
+                      "reps": 6,
+                      "weight": 60,
+                      "prog": "double",
+                      "inc": 2.5,
+                      "repsMin": 4,
+                      "sg": "a",
+                      "why": "Main lift."
+                    },
+                    {"id":"0001","sets":3,"mode":"reps","reps":15,"sg":"a"}
+                  ]
+                },
+                {
+                  "id": "r1",
+                  "name": "Conditioning",
+                  "emoji": "👨‍👩‍👧",
+                  "ex": [
+                    {"id":"3220","sets":3,"min":20,"speed":8.5},
+                    {"id":"0007","sets":3,"mode":"time","sec":60}
+                  ]
+                }
+              ],
+              "customEx": []
+            }
+          }
+        },
+        {
+          "name": "defaults: name, emoji, summary",
+          "args": {"data":{"routines":[{"name":"A","emoji":"","ex":[{"id":"0001"}]}]}},
+          "expected": {
+            "ok": true,
+            "bundle": {
+              "opengym_plan": 1,
+              "name": "Coach plan",
+              "summary": "",
+              "basedOn": "",
+              "week": {},
+              "routines": [
+                {"id":"r0","name":"A","emoji":"🏋️","ex":[{"id":"0001","sets":3,"mode":"reps","reps":10}]}
+              ],
+              "customEx": []
+            }
+          }
+        }
+      ]
+    },
+    "validateReview": {
+      "vectors": [
+        {
+          "name": "invented change type",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "delete-all-workouts",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].type \"delete-all-workouts\" is not allowed — use one of: add-exercise, remove-exercise, swap-exercise, sets, reps, repsMin, sec, cardio, reorder, superset, routine-prog, exercise-prog, inc, add-routine, remove-routine, rename-routine, week"
+            ]
+          }
+        },
+        {
+          "name": "target routine unknown",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"ghost","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].target.routineId \"ghost\" is not one of the routines in the plan"]
+          }
+        },
+        {
+          "name": "exercise not in that routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"9999"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].target.exId \"9999\" is not in routine \"Full body A\""]
+          }
+        },
+        {
+          "name": "right exercise, wrong routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r2","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].target.exId \"0001\" is not in routine \"Full body B\""]
+          }
+        },
+        {
+          "name": "why required",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": ""
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].why is required — every change must cite the evidence behind it"]
+          }
+        },
+        {
+          "name": "sets must be an integer",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": "four",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after must be a whole number of sets (1-10)"]}
+        },
+        {
+          "name": "sets above 10",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 99,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after must be a whole number of sets (1-10)"]}
+        },
+        {
+          "name": "reps 0",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 0,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after must be a whole number of reps (1-100)"]}
+        },
+        {
+          "name": "exercise-prog linear",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": "linear",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "linear"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "exercise-prog vibes",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": "vibes",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].after must be one of off, linear, greyskull, double, time"]
+          }
+        },
+        {
+          "name": "inc negative",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": -5,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after must be a positive increment"]}
+        },
+        {
+          "name": "add-exercise with a library id gets its name",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": {"id":"0009","sets":3,"reps":12},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "id": "0009",
+                    "name": "assisted chest dip (kneeling)",
+                    "sets": 3,
+                    "mode": "reps",
+                    "reps": 12
+                  }
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "add-exercise with a made-up id",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": {"id":"made-up"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after.id must be an exercise id from the library"]}
+        },
+        {
+          "name": "reorder permutation",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": ["0007","0001"],
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": ["0007","0001"]
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "reorder dropping one",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": ["0007"],
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after must list exactly the 2 exercise ids already in \"Full body A\", reordered"
+            ]
+          }
+        },
+        {
+          "name": "reorder smuggling one in",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": ["0007","0009"],
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after must list exactly the 2 exercise ids already in \"Full body A\", reordered"
+            ]
+          }
+        },
+        {
+          "name": "week to an existing routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":6},"before":3,"after":"r2","why":"stalled twice"}
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":6},"why":"stalled twice","before":3,"after":"r2"}
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "week to rest",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "week",
+                  "target": {"weekday":6},
+                  "before": 3,
+                  "after": "rest",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "week",
+                  "target": {"weekday":6},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "rest"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "week to null",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":6},"before":3,"after":null,"why":"stalled twice"}
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":6},"why":"stalled twice","before":3,"after":null}
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "week weekday 9",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":9},"before":3,"after":"r1","why":"stalled twice"}
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].target.weekday must be 0-6"]}
+        },
+        {
+          "name": "week to an unknown routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "week",
+                  "target": {"weekday":6},
+                  "before": 3,
+                  "after": "ghost",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].after must be a routine id from the plan, \"rest\", or null"]
+          }
+        },
+        {
+          "name": "nochange with a reading",
+          "ref": "§6.4",
+          "args": {"data":{"nochange":true,"reading":"Plan is working."}},
+          "expected": {"ok":true,"nochange":true,"reading":"Plan is working."}
+        },
+        {
+          "name": "empty change list is nochange",
+          "ref": "§6.4",
+          "args": {"data":{"coach_contract":1,"summary":"s","changes":[]}},
+          "expected": {"ok":true,"nochange":true,"reading":"s"}
+        },
+        {
+          "name": "notes survive with a change",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ],
+              "notes": ["Body weight is flat — eat more."]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                }
+              ],
+              "notes": ["Body weight is flat — eat more."]
+            }
+          }
+        },
+        {
+          "name": "one bad change fails the set",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c2",
+                  "type": "not-a-type",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[1].type \"not-a-type\" is not allowed — use one of: add-exercise, remove-exercise, swap-exercise, sets, reps, repsMin, sec, cardio, reorder, superset, routine-prog, exercise-prog, inc, add-routine, remove-routine, rename-routine, week"
+            ]
+          }
+        },
+        {
+          "name": "well-formed add-exercise",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": {"id":"0009","sets":3,"reps":10},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "id": "0009",
+                    "name": "assisted chest dip (kneeling)",
+                    "sets": 3,
+                    "mode": "reps",
+                    "reps": 10
+                  }
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed remove-exercise",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": null
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed swap-exercise",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"id":"0009"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"id":"0009","name":"assisted chest dip (kneeling)"}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed sets",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed reps",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 12,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 12
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed repsMin",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "repsMin",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 8,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "repsMin",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 8
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed sec",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sec",
+                  "target": {"routineId":"r1","exId":"0007"},
+                  "before": 3,
+                  "after": 60,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sec",
+                  "target": {"routineId":"r1","exId":"0007"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 60
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed cardio",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"min":25,"speed":9},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"min":25,"speed":9}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed reorder",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": ["0007","0001"],
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": ["0007","0001"]
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed superset",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"link":true,"with":"0007"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"link":true,"with":"0007"}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed routine-prog",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "routine-prog",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "double",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "routine-prog",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "double"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed exercise-prog",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": "greyskull",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "greyskull"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed inc",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 2.5,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 2.5
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed add-routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {},
+                  "before": 3,
+                  "after": {"name":"C","ex":[{"id":"0001","sets":3,"reps":10}]},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "name": "C",
+                    "emoji": "🏋️",
+                    "ex": [{"id":"0001","name":"3/4 sit-up","sets":3,"mode":"reps","reps":10}]
+                  }
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed remove-routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-routine",
+                  "target": {"routineId":"r2"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-routine",
+                  "target": {"routineId":"r2"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": null
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed rename-routine",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "rename-routine",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "Upper",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "rename-routine",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "Upper"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "well-formed week",
+          "ref": "§6.4",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":2},"before":3,"after":"r1","why":"stalled twice"}
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":2},"why":"stalled twice","before":3,"after":"r1"}
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R1 null",
+          "args": {"data":null},
+          "expected": {"ok":false,"errors":["the answer was not an object"]}
+        },
+        {
+          "name": "R2 nochange falls back to summary",
+          "args": {
+            "data": {
+              "nochange": 1,
+              "summary": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+            }
+          },
+          "expected": {
+            "ok": true,
+            "nochange": true,
+            "reading": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+          }
+        },
+        {
+          "name": "R2 nochange without text",
+          "args": {"data":{"nochange":true}},
+          "expected": {"ok":true,"nochange":true,"reading":""}
+        },
+        {
+          "name": "R3 changes missing",
+          "args": {"data":{"summary":"s"}},
+          "expected": {
+            "ok": false,
+            "errors": ["changes must be an array (or set \"nochange\": true with a \"reading\")"]
+          }
+        },
+        {
+          "name": "R3 changes not an array",
+          "args": {"data":{"changes":{}}},
+          "expected": {
+            "ok": false,
+            "errors": ["changes must be an array (or set \"nochange\": true with a \"reading\")"]
+          }
+        },
+        {
+          "name": "R4 only the first 25 changes",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c0",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c2",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c3",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c4",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c5",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c6",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c7",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c8",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c9",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c10",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c11",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c12",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c13",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c14",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c15",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c16",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c17",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c18",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c19",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c20",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c21",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c22",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c23",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c24",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c25",
+                  "type": "bogus",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c0",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c2",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c3",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c4",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c5",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c6",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c7",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c8",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c9",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c10",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c11",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c12",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c13",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c14",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c15",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c16",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c17",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c18",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c19",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c20",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c21",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c22",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c23",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                },
+                {
+                  "id": "c24",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R5 change not an object",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                null,
+                "x",
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0] is not an object","changes[1] is not an object"]}
+        },
+        {
+          "name": "R6 type missing",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].type \"undefined\" is not allowed — use one of: add-exercise, remove-exercise, swap-exercise, sets, reps, repsMin, sec, cardio, reorder, superset, routine-prog, exercise-prog, inc, add-routine, remove-routine, rename-routine, week"
+            ]
+          }
+        },
+        {
+          "name": "R7 why blank",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "   "
+                },
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": 7
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].why is required — every change must cite the evidence behind it",
+              "changes[1].why is required — every change must cite the evidence behind it"
+            ]
+          }
+        },
+        {
+          "name": "R8 routineId missing",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {"id":"c1","type":"sets","target":{},"before":3,"after":4,"why":"stalled twice"},
+                {"id":"c1","type":"rename-routine","before":3,"after":"X","why":"stalled twice"}
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].target.routineId \"undefined\" is not one of the routines in the plan",
+              "changes[1].target.routineId \"undefined\" is not one of the routines in the plan"
+            ]
+          }
+        },
+        {
+          "name": "R9 exId missing",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "reps",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "repsMin",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "sec",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "exercise-prog",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].target.exId is required for type \"remove-exercise\"",
+              "changes[1].target.exId is required for type \"swap-exercise\"",
+              "changes[2].target.exId is required for type \"sets\"",
+              "changes[3].target.exId is required for type \"reps\"",
+              "changes[4].target.exId is required for type \"repsMin\"",
+              "changes[5].target.exId is required for type \"sec\"",
+              "changes[6].target.exId is required for type \"cardio\"",
+              "changes[7].target.exId is required for type \"exercise-prog\"",
+              "changes[8].target.exId is required for type \"inc\"",
+              "changes[9].target.exId is required for type \"superset\""
+            ]
+          }
+        },
+        {
+          "name": "R11 add-exercise without after",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": null,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after.id must be an exercise id from the library"]}
+        },
+        {
+          "name": "R11 add-exercise normalisation",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1","exId":"0001","weekday":3},
+                  "before": 3,
+                  "after": {
+                    "id": "3220",
+                    "sets": 0,
+                    "mode": "cardio",
+                    "reps": 8,
+                    "sec": 4,
+                    "weight": 50,
+                    "prog": "vibes",
+                    "position": 21,
+                    "min": 30,
+                    "speed": 9
+                  },
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c2",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r2"},
+                  "before": 3,
+                  "after": {"id":"0001","mode":"bogus","sec":60,"weight":-1,"prog":"double","position":0},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r1","exId":"0001","weekday":3},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "id": "3220",
+                    "name": "astride jumps (male)",
+                    "sets": 3,
+                    "mode": "cardio",
+                    "reps": 8,
+                    "weight": 50
+                  }
+                },
+                {
+                  "id": "c2",
+                  "type": "add-exercise",
+                  "target": {"routineId":"r2"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "id": "0001",
+                    "name": "3/4 sit-up",
+                    "sets": 3,
+                    "mode": "reps",
+                    "sec": 60,
+                    "prog": "double",
+                    "position": 0
+                  }
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R12 swap to an unknown id",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"id":"nope"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after.id must be an exercise id from the library"]}
+        },
+        {
+          "name": "R12 swap normalisation",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"id":"0025","sets":5,"reps":101,"weight":70,"mode":"time"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"id":"0025","name":"barbell bench press","sets":5,"weight":70}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R13 swap for itself",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "swap-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"id":"0001"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0] swaps an exercise for itself"]}
+        },
+        {
+          "name": "R14–R17 ranges",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 0,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 100,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "repsMin",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 101,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "sec",
+                  "target": {"routineId":"r1","exId":"0007"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "sec",
+                  "target": {"routineId":"r1","exId":"0007"},
+                  "before": 3,
+                  "after": 3600,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after must be a whole number of sets (1-10)",
+              "changes[2].after must be a whole number (1-100)",
+              "changes[3].after must be seconds (5-3600)"
+            ]
+          }
+        },
+        {
+          "name": "R18 cardio",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"speed":9.5},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"min":200,"speed":7},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"speed":-1},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "cardio",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": null,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after must carry min and/or speed",
+              "changes[4].after must carry min and/or speed"
+            ]
+          }
+        },
+        {
+          "name": "R19 inc",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 0,
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": "2.5",
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "inc",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 1.25,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": [
+              "changes[0].after must be a positive increment",
+              "changes[1].after must be a positive increment"
+            ]
+          }
+        },
+        {
+          "name": "R20 policies",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "routine-prog",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "time",
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "routine-prog",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": null,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[1].after must be one of off, linear, greyskull, double, time"]
+          }
+        },
+        {
+          "name": "R21 reorder not an array",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "0007,0001",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].after must be an array of exercise ids in the new order"]
+          }
+        },
+        {
+          "name": "R22 reorder with a duplicate passes (coach-Q7 in the original)",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": ["0001","0001"],
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "reorder",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": ["0001","0001"]
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R23 superset link without partner",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"link":true},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after.with is required when linking a superset"]}
+        },
+        {
+          "name": "R24 superset partner not in routine",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"link":true,"with":"0009"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].after.with \"0009\" is not in routine \"Full body A\""]
+          }
+        },
+        {
+          "name": "R24 superset with itself passes (coach-Q8 in the original)",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"link":true,"with":"0001"},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"link":true,"with":"0001"}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "superset unlink",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"link":false,"with":"0007"},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": null,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"link":false}
+                },
+                {
+                  "id": "c1",
+                  "type": "superset",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {"link":false}
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R25 add-routine name required",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {},
+                  "before": 3,
+                  "after": {"ex":[{"id":"0001"}]},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after.name is required"]}
+        },
+        {
+          "name": "R26 add-routine needs a library exercise",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {},
+                  "before": 3,
+                  "after": {"name":"C","ex":[{"id":"nope"},null]},
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": false,
+            "errors": ["changes[0].after.ex must list at least one exercise from the library"]
+          }
+        },
+        {
+          "name": "R26 add-routine normalisation",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {"routineId":"ghost"},
+                  "before": 3,
+                  "after": {
+                    "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                    "emoji": "🏋️‍♀️🏋️‍♀️",
+                    "prog": "time",
+                    "ex": [
+                      {"id":"nope"},
+                      {"id":"0001","sets":12,"mode":"time","sec":30,"reps":5},
+                      {"id":"3220","mode":"cardio","min":30,"speed":9},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"},
+                      {"id":"0025"}
+                    ]
+                  },
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "add-routine",
+                  "target": {"routineId":"ghost"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": {
+                    "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                    "emoji": "🏋️‍♀️🏋",
+                    "prog": "time",
+                    "ex": [
+                      {"id":"0001","name":"3/4 sit-up","sets":3,"mode":"time","reps":5,"sec":30},
+                      {"id":"3220","name":"astride jumps (male)","sets":3,"mode":"cardio"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"},
+                      {"id":"0025","name":"barbell bench press","sets":3,"mode":"reps"}
+                    ]
+                  }
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R27 rename to blank",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "rename-routine",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "  ",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].after must be the new routine name"]}
+        },
+        {
+          "name": "R27 rename clamped",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "rename-routine",
+                  "target": {"routineId":"r1"},
+                  "before": 3,
+                  "after": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "rename-routine",
+                  "target": {"routineId":"r1"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "R28 weekday missing",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [{"id":"c1","type":"week","target":{},"before":3,"after":"r1","why":"stalled twice"}]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].target.weekday must be 0-6"]}
+        },
+        {
+          "name": "R28 weekday as a string",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "week",
+                  "target": {"weekday":"2"},
+                  "before": 3,
+                  "after": "r1",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {"ok":false,"errors":["changes[0].target.weekday must be 0-6"]}
+        },
+        {
+          "name": "R29 week to undefined",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [{"id":"c1","type":"week","target":{"weekday":0},"before":3,"why":"stalled twice"}]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {"id":"c1","type":"week","target":{"weekday":0},"why":"stalled twice","before":3,"after":null}
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "remove types force after null",
+          "args": {
+            "data": {
+              "coach_contract": 1,
+              "summary": "s",
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": {"id":"x"},
+                  "why": "stalled twice"
+                },
+                {
+                  "id": "c2",
+                  "type": "remove-routine",
+                  "target": {"routineId":"r2"},
+                  "before": 3,
+                  "after": "x",
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "s",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "remove-exercise",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": null
+                },
+                {
+                  "id": "c2",
+                  "type": "remove-routine",
+                  "target": {"routineId":"r2"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": null
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "envelope normalisation",
+          "args": {
+            "data": {
+              "summary": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+              "evidence": {"from":"2026-07-01","to":"","sessions":10001},
+              "changes": [
+                {
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001","weekday":7},
+                  "after": 4,
+                  "why": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+                },
+                {
+                  "id": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 10,
+                  "after": 12,
+                  "why": "y"
+                },
+                {"id":" ","type":"week","target":{"weekday":0,"routineId":"ghost"},"after":"rest","why":"z"}
+              ],
+              "notes": [
+                "n1",
+                " ",
+                7,
+                "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                "n4",
+                "n5",
+                "n6",
+                "n7"
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+              "evidence": {"from":"2026-07-01","to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c0",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+                  "before": null,
+                  "after": 4
+                },
+                {
+                  "id": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+                  "type": "reps",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "y",
+                  "before": 10,
+                  "after": 12
+                },
+                {
+                  "id": "c2",
+                  "type": "week",
+                  "target": {"routineId":"ghost","weekday":0},
+                  "why": "z",
+                  "before": null,
+                  "after": "rest"
+                }
+              ],
+              "notes": [
+                "n1",
+                "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                "n4",
+                "n5",
+                "n6",
+                "n7"
+              ]
+            }
+          }
+        },
+        {
+          "name": "evidence missing",
+          "args": {
+            "data": {
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "",
+              "evidence": {"from":null,"to":null,"sessions":null},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                }
+              ],
+              "notes": []
+            }
+          }
+        },
+        {
+          "name": "evidence sessions valid",
+          "args": {
+            "data": {
+              "evidence": {"from":1,"to":"2026-09-30","sessions":0},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "before": 3,
+                  "after": 4,
+                  "why": "stalled twice"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "ok": true,
+            "proposal": {
+              "summary": "",
+              "evidence": {"from":1,"to":"2026-09-30","sessions":0},
+              "changes": [
+                {
+                  "id": "c1",
+                  "type": "sets",
+                  "target": {"routineId":"r1","exId":"0001"},
+                  "why": "stalled twice",
+                  "before": 3,
+                  "after": 4
+                }
+              ],
+              "notes": []
+            }
+          }
+        }
+      ]
+    }
+  }
+}
