@@ -41,6 +41,16 @@ No account on someone else's server, no subscription, no ads. Just `docker compo
 > [ChatGPT / Codex setup](ChatGPT-setup-instructions.md) ·
 > [design deck (PDF)](openGym_AI_Strategy.pdf)
 
+> ### 📱 Flutter app + Cloudflare backend + Claude over MCP
+>
+> This branch also ports openGym to a **Flutter** app (`app/`) backed by a **Cloudflare Worker +
+> D1** (`cloudflare/`). The Worker is also a remote **MCP server**, so Claude (claude.ai, Desktop
+> or Code) can read your training and propose plans and plan changes. You accept them in the app,
+> change by change, and each accepted change can be reverted.
+>
+> **→ [Setup guide (Spanish)](docs/flutter-cloudflare/SETUP.md)** ·
+> [architecture & contract](docs/flutter-cloudflare/ARCHITECTURE.md)
+
 <br>
 
 <div align="center">
