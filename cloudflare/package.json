@@ -9,14 +9,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply opengym-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply opengym-db --remote",
-    "db:seed:local": "wrangler d1 execute opengym-db --local --file=seed/exercises.sql",
-    "db:seed:remote": "wrangler d1 execute opengym-db --remote --file=seed/exercises.sql"
+    "db:migrate:remote": "wrangler d1 migrations apply opengym-db --remote"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^1.2.1",
-    "@modelcontextprotocol/server": "^2.0.0",
-    "agents": "^0.24.0",
+    "@cloudflare/workers-oauth-provider": "1.2.1",
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "0.24.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

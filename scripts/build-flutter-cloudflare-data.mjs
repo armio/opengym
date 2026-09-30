@@ -7,7 +7,8 @@
 //   node scripts/build-flutter-cloudflare-data.mjs --check  # fail if either is out of date
 //
 // app/assets/exercises.json       full records for the app (names, taxonomy, instructions en/es, media)
-// cloudflare/src/catalog/library.json compact records for the MCP tools (id, name, taxonomy, secondary)
+// cloudflare/src/catalog/library.json records for the MCP tools: {id, n, bp, tg, eq, sm} plus the Spanish
+//                                  labels and instructions (bp_es, tg_es, eq_es, sm_es, st_es)
 //
 // Order is the dataset order (roughly alphabetical); ids are 4-digit strings, never numbers.
 
@@ -39,7 +40,11 @@ const app = EXDB.map(e => ({
   gif: e.gif || null,
 }))
 
-const worker = EXDB.map(e => ({ id: e.id, n: e.n, bp: e.bp, tg: e.tg, eq: e.eq, sm: e.sm || [] }))
+const worker = EXDB.map(e => ({
+  id: e.id, n: e.n, bp: e.bp, tg: e.tg, eq: e.eq, sm: e.sm || [],
+  bp_es: tr(e.bp), tg_es: tr(e.tg), eq_es: tr(e.eq), sm_es: (e.sm || []).map(tr),
+  st_es: ES_INSTR[e.id] || [],
+}))
 
 const ids = new Set(app.map(r => r.id))
 if (ids.size !== app.length) throw new Error('duplicate exercise ids')
