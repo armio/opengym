@@ -1,12 +1,10 @@
-/// Spanish display formatting used by the shared widgets (es-ES conventions of the original's
-/// `fmtNum` / `fmtDate`). Deterministic: no locale data needs to be initialised.
+/// Spanish display formatting used by the shared widgets. The number and date helpers are the
+/// engine's `format.dart` (the port of `format.js`) under the names the widgets already use.
 library;
 
-import '../../data/dates.dart';
+import '../../engine/format.dart';
 
-const _weekdaysShort = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 const _weekdaysLong = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-const _monthsShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 const _monthsLong = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', //
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
@@ -14,36 +12,13 @@ const _monthsLong = [
 
 /// `fmtNum`: rounded to one decimal, Spanish separators (`62.25` → `"62,3"`, `60` → `"60"`,
 /// `12345` → `"12.345"`; four-digit numbers are not grouped, as in es-ES).
-String formatNum(num value) {
-  // JavaScript's Math.round: halves go towards +∞ (-1.25 → -1.2, not -1.3).
-  final rounded = (value * 10 + .5).floor() / 10;
-  final negative = rounded < 0;
-  final abs = rounded.abs();
-  final whole = abs.truncate();
-  final tenth = ((abs - whole) * 10).round();
-  var digits = '$whole';
-  if (digits.length >= 5) {
-    final buf = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buf.write('.');
-      buf.write(digits[i]);
-    }
-    digits = buf.toString();
-  }
-  final text = tenth == 0 ? digits : '$digits,$tenth';
-  return negative && text != '0' ? '-$text' : text;
-}
+String formatNum(num value) => fmtNum(value);
 
-/// `fmtNum(v) + ' ' + unit`.
-String formatWeight(num value, String unit) => '${formatNum(value)} $unit';
+/// `fmtVol`: `fmtNum(v) + ' ' + unit`.
+String formatWeight(num value, String unit) => fmtVol(value, unit);
 
 /// `fmtDate(iso)`: `"30 sept"`; with [long]: `"mié, 30 sept"`. Returns [iso] when malformed.
-String formatDate(String iso, {bool long = false}) {
-  final d = parseIsoDate(iso);
-  if (d == null) return iso;
-  final base = '${d.day} ${_monthsShort[d.month - 1]}';
-  return long ? '${_weekdaysShort[d.weekday - 1]}, $base' : base;
-}
+String formatDate(String iso, {bool long = false}) => fmtDate(iso, long: long);
 
 /// `"miércoles, 30 de septiembre"` — the Home header style.
 String formatDateFull(DateTime d) => '${_weekdaysLong[d.weekday - 1]}, ${d.day} de ${_monthsLong[d.month - 1]}';

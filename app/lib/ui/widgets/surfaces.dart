@@ -253,6 +253,11 @@ class ListRow extends StatelessWidget implements GroupedRow {
   @override
   bool get hasIcon => icon != null || leading != null;
 
+  /// The widest a [value] may get, as a share of the row: the title gives way to the value
+  /// (`.lrow-v` is `flex: none`), but a very long value is cut rather than squeezing the title
+  /// to nothing.
+  static const double _maxValueShare = .6;
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -261,52 +266,54 @@ class ListRow extends StatelessWidget implements GroupedRow {
       constraints: const BoxConstraints(minHeight: 46),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        child: Row(
-          children: [
-            if (leading != null) ...[
-              leading!,
-              const SizedBox(width: 12),
-            ] else if (icon != null) ...[
-              IconBadge(icon: icon!, tint: iconTint),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: t.rowTitle.copyWith(color: danger ? p.red : p.label)),
-                  if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: t.caption)],
-                ],
-              ),
-            ),
-            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-            if (value != null) ...[
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  value!,
-                  style: t.rowTitle.copyWith(color: p.label2),
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-            if (accessory == RowAccessory.chevron) ...[
-              const SizedBox(width: 6),
-              AppIcon('chevronRight', size: 18, color: p.label3),
-            ],
-            if (accessory == RowAccessory.check) ...[
-              const SizedBox(width: 6),
-              AppIcon('check', size: 18, color: p.acc),
-            ],
-          ],
-        ),
+        child: value == null ? _content(p, t, null) : LayoutBuilder(builder: (_, box) => _content(p, t, box.maxWidth)),
       ),
     );
     if (onTap == null) return row;
     return Pressable(onTap: onTap, pressedScale: 1, pressedColor: p.surface2, color: Colors.transparent, child: row);
   }
+
+  /// [width] is the row's inner width, known only when there is a [value] to size.
+  Widget _content(AppPalette p, AppTextStyles t, double? width) => Row(
+    children: [
+      if (leading != null) ...[
+        leading!,
+        const SizedBox(width: 12),
+      ] else if (icon != null) ...[
+        IconBadge(icon: icon!, tint: iconTint),
+        const SizedBox(width: 12),
+      ],
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: t.rowTitle.copyWith(color: danger ? p.red : p.label)),
+            if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: t.caption)],
+          ],
+        ),
+      ),
+      if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+      if (value != null) ...[
+        const SizedBox(width: 8),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: width! * _maxValueShare),
+          child: Text(
+            value!,
+            style: t.rowTitle.copyWith(color: p.label2),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+      if (accessory == RowAccessory.chevron) ...[
+        const SizedBox(width: 6),
+        AppIcon('chevronRight', size: 18, color: p.label3),
+      ],
+      if (accessory == RowAccessory.check) ...[const SizedBox(width: 6), AppIcon('check', size: 18, color: p.acc)],
+    ],
+  );
 }
 
 /// One option of a [SelectRow].

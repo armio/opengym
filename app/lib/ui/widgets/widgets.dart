@@ -2,6 +2,7 @@
 library;
 
 export 'app_icons.dart';
+export 'body_map.dart';
 export 'body_weight_sheet.dart';
 export 'buttons.dart';
 export 'controls.dart';
