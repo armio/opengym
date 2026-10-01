@@ -73,6 +73,8 @@ class SettingsHarness {
     ]),
     'POST /api/devices/d2/revoke': (_) async => _json({'ok': true}),
     'POST /api/oauth/revoke-all': (_) async => _json({'ok': true, 'revoked': 1}),
+    'POST /api/recovery': (_) async => _json({'ok': true, 'stored': 0, 'deleted': 0}),
+    'POST /api/recovery/clear': (_) async => _json({'ok': true, 'deleted': 0}),
     'POST /api/import/opengym': (request) async {
       if (offline) throw http.ClientException('offline');
       final body = jsonDecode(request.body) as Map<String, dynamic>;

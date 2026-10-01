@@ -6,6 +6,7 @@ import { registerAthleteTools } from './tools/athlete'
 import { registerCatalogTools } from './tools/catalog'
 import { registerProposalReadTools } from './tools/proposals'
 import { registerProposeTools } from './tools/propose'
+import { registerRecoveryTools } from './tools/recovery'
 import { registerTrainingTools } from './tools/training'
 
 /**
@@ -16,6 +17,7 @@ import { registerTrainingTools } from './tools/training'
 export function createServer(env: Env): McpServer {
   const server = new McpServer({ name: 'opengym', title: 'openGym', version: APP_VERSION }, { instructions: SERVER_INSTRUCTIONS })
   registerTrainingTools(server, env.DB)
+  registerRecoveryTools(server, env.DB)
   registerCatalogTools(server, env.DB)
   registerProposalReadTools(server, env.DB)
   registerProposeTools(server, env.DB)

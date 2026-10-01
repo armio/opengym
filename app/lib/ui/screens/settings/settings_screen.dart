@@ -6,12 +6,13 @@ import 'account_section.dart';
 import 'backup_files.dart';
 import 'claude_section.dart';
 import 'data_section.dart';
+import 'health_section.dart';
 import 'preference_sections.dart';
 
 export 'backup_files.dart' show BackupFiles, PlatformBackupFiles;
 
-/// Ajustes (specs/ui.md §3.9, contract §6): account and devices, the Claude connector,
-/// preferences (bound to [AppState.updateSettings]), backups and "Borrar todo", and credits.
+/// Ajustes (specs/ui.md §3.9, contract §6): account and devices, the Claude connector, Apple
+/// Health (§8), preferences (bound to [AppState.updateSettings]), backups and "Borrar todo", and credits.
 ///
 /// [backupFiles] picks and shares backup files (replaceable in tests).
 class SettingsScreen extends StatelessWidget {
@@ -34,6 +35,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const AccountSection(),
           const ConnectClaudeSection(),
+          const HealthSection(),
           const GeneralSection(),
           const WorkoutSection(),
           const AppearanceSection(),

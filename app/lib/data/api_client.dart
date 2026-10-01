@@ -271,6 +271,13 @@ class ApiClient implements SyncApi {
   /// `POST /api/oauth/revoke-all` — revokes every Claude connector grant.
   Future<void> revokeClaudeAccess() => _send('POST', '/api/oauth/revoke-all', body: const {});
 
+  /// `POST /api/recovery`: Apple Health recovery days (contract §8), at most 400 per call.
+  Future<void> uploadRecovery(List<JsonMap> days) =>
+      _send('POST', '/api/recovery', body: {'days': days}, timeout: const Duration(seconds: 60));
+
+  /// `POST /api/recovery/clear`: deletes every recovery day on the server.
+  Future<void> clearRecovery() => _send('POST', '/api/recovery/clear', body: const {});
+
   /// `GET /api/health`.
   Future<JsonMap> health() => _send('GET', '/api/health', auth: false);
 

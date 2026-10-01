@@ -70,7 +70,7 @@ ${PLAN_CONSTRAINTS}`
 
 const REVIEW = `# Task: review their training and propose plan changes
 
-1. Call get_overview (plan ids, profile, previouslyDeclined, recentDecisions) and get_training_review (by default the training since their last review, at most 12 weeks). Use get_exercise_history for any exercise you want to look at more closely and get_body_weight for the trend.
+1. Call get_overview (plan ids, profile, previouslyDeclined, recentDecisions) and get_training_review (by default the training since their last review, at most 12 weeks). Use get_exercise_history for any exercise you want to look at more closely and get_body_weight for the trend. If get_overview.recovery is not null, also call get_recovery over the same window.
 2. Read window (what they actually did), aggregates (stalls, adherence, coverage), bodyweight, and the owner's note below if there is one. Then decide whether the **plan** should change.
 
 ## How to decide
@@ -82,6 +82,7 @@ Change something when the data says so:
 - Sessions running well over athlete.sessionMin (medianSessionMin) — cut volume or superset.
 - A body part with no work in the window while others get plenty (setsByBodyPart, untrainedMuscles) — add something, or rebalance.
 - Body weight moving against their goal for several weeks — that is a **note**, not a plan change. Say it plainly and leave the plan alone.
+- Recovery signals (HRV down, resting heart rate up, short sleep) that last a week or more **together with** stalls or effort creeping up — consider a deload week or fewer hard sets. Recovery signals alone, while training goes well, are a note, not a plan change.
 
 **Change nothing when nothing warrants it.** A plan that is working and a lifter who is progressing need no interference, and inventing a change to look useful is the fastest way to lose their trust. In that case call report_no_change with a short honest paragraph on how the block went.
 

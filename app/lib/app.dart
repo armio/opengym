@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'data/app_state.dart';
+import 'data/health/health_bridge.dart';
+import 'data/health/health_sync.dart';
 import 'data/library.dart';
 import 'ui/screens/login/login_screen.dart';
 import 'ui/screens/workout/workout_screen.dart';
@@ -27,6 +31,7 @@ class OpenGymApp extends StatefulWidget {
     this.workoutLauncher = const DefaultWorkoutLauncher(),
     this.restAlerts,
     this.wakeLock = const PlatformWakeLock(),
+    this.healthBridge,
   });
 
   final AppState? appState;
@@ -41,6 +46,9 @@ class OpenGymApp extends StatefulWidget {
   /// Keeps the screen on during a workout.
   final ScreenWakeLock wakeLock;
 
+  /// Apple Health (default: HealthKit on iPhone, unsupported elsewhere).
+  final HealthBridge? healthBridge;
+
   @override
   State<OpenGymApp> createState() => _OpenGymAppState();
 }
@@ -50,6 +58,7 @@ class _OpenGymAppState extends State<OpenGymApp> {
       ? Future.value(widget.appState)
       : (widget.loader ?? () async => AppState.load(library: await ExerciseLibrary.load()))();
   WorkoutController? _workout;
+  HealthSync? _health;
 
   WorkoutController _workoutFor(AppState app) => _workout ??= WorkoutController(
     app: app,
@@ -57,9 +66,18 @@ class _OpenGymAppState extends State<OpenGymApp> {
     wakeLock: widget.wakeLock,
   );
 
+  HealthSync _healthFor(AppState app) {
+    final existing = _health;
+    if (existing != null) return existing;
+    final health = _health = HealthSync(app: app, bridge: widget.healthBridge ?? HealthBridge.platform());
+    unawaited(health.start());
+    return health;
+  }
+
   @override
   void dispose() {
     _workout?.dispose();
+    _health?.dispose();
     super.dispose();
   }
 
@@ -76,12 +94,14 @@ class _OpenGymAppState extends State<OpenGymApp> {
           );
         }
         final workout = _workoutFor(app);
+        final health = _healthFor(app);
         return MultiProvider(
           providers: [
             ChangeNotifierProvider<AppState>.value(value: app),
             Provider<WorkoutLauncher>.value(value: widget.workoutLauncher),
             Provider<WorkoutController>.value(value: workout),
             ChangeNotifierProvider<WorkoutTimers>.value(value: workout.timers),
+            ChangeNotifierProvider<HealthSync>.value(value: health),
           ],
           child: const _AppView(),
         );

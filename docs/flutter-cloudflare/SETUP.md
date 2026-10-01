@@ -142,6 +142,41 @@ Al abrir la app por primera vez:
 La primera sincronización solo descarga. Si el teléfono ya tenía entrenos de antes, la app
 pregunta si quieres subirlos.
 
+### Apple Health (iPhone)
+
+La app se conecta con Salud para:
+
+- **Guardar tus entrenos** en Salud como «Entrenamiento de fuerza», con una estimación de
+  calorías. No cuentan para el anillo de Moverse, que solo usa lo que mide el Apple Watch.
+- **Sincronizar tu peso** en los dos sentidos: lo que mide tu báscula entra en openGym y lo que
+  apuntas en openGym se guarda en Salud. Si cambias o borras un pesaje en openGym, también se
+  cambia o borra la copia en Salud.
+- **Compartir tu recuperación con Claude:** frecuencia cardiaca en reposo, variabilidad cardiaca
+  (VFC) y sueño, un resumen por día que se guarda en tu servidor. Claude lo ve con
+  `get_recovery` y en el resumen de `get_overview`.
+
+Para activarlo:
+
+1. Actualiza el código y vuelve a instalar la app (`flutter run --release`). El proyecto ya
+   trae el permiso de HealthKit y el identificador `cc.armio.gym`. Si cambiaste
+   `project.pbxproj` a mano en Xcode, descarta esos cambios antes de actualizar
+   (`git checkout -- ios/Runner.xcodeproj/project.pbxproj`) y vuelve a elegir tu **Team** en
+   *Signing & Capabilities*.
+2. En la app: **Ajustes → Apple Health → Conectar con Apple Health** y permite todo en la hoja
+   de Salud.
+3. La primera vez importa los pesos de los últimos 90 días y envía 90 días de recuperación.
+   Después se sincroniza cada vez que abres la app.
+
+Ten en cuenta:
+
+- Si ya registras los entrenos con el Apple Watch, desactiva «Guardar entrenos en Salud» para
+  no tenerlos dos veces.
+- iOS no le dice a la app qué permisos le negaste. Si falta algún dato, revisa *Ajustes del
+  iPhone → Salud → Acceso a datos y dispositivos → openGym*.
+- Al desactivar «Compartir recuperación con Claude», o al desconectar Apple Health con esa
+  opción activa, se borran de tu servidor los datos de recuperación. Lo que ya está en Salud se
+  queda allí.
+
 ### Traer tus datos de openGym
 
 Si ya usabas openGym, exporta una copia JSON desde la app original (Ajustes → Exportar). Luego, en
@@ -180,6 +215,7 @@ https://gym.armio.cc/mcp
 | `get_overview` | Punto de partida: perfil, plan actual, estadísticas, peso, pesos de trabajo, propuestas pendientes y decisiones anteriores. |
 | `get_training_review` | Análisis de un periodo: sesiones, estancamientos, adherencia, días perdidos, series por grupo muscular, esfuerzo (RIR/RPE) y tendencia del peso. |
 | `get_exercise_history`, `list_workouts`, `get_body_weight` | Detalle de un ejercicio, de los entrenos o del peso corporal. |
+| `get_recovery` | Tu recuperación desde Apple Health: FC en reposo, VFC y sueño, la última semana comparada con las cuatro anteriores. |
 | `search_exercises`, `get_exercise` | Buscar en la biblioteca de 1.324 ejercicios y en tus ejercicios propios (también en español: «pecho», «cuádriceps»…). |
 | `update_athlete_profile` | Guardar tus objetivos, días disponibles, duración de sesión, material y limitaciones. |
 | `propose_plan` | Proponer un plan semanal completo. |
@@ -194,6 +230,7 @@ Ejemplos de lo que puedes pedirle:
 - «Revisa mis últimas 6 semanas en openGym y propón cambios si hacen falta.»
 - «¿Cómo va mi press de banca? ¿Estoy estancado?»
 - «Tengo molestias en el hombro; ajusta el plan para no cargar esa zona.»
+- «¿Cómo va mi recuperación esta semana? ¿Me conviene una semana de descarga?»
 
 ### Cómo se aplican las propuestas
 

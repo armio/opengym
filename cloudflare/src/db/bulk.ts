@@ -2,6 +2,7 @@ import { upsertBodyweight, type BodyweightItem } from './bodyweight'
 import { defaultDocData, DOC_KEYS, docPutStatement, type DocWrite } from './docs'
 import { upsertExWeights, type ExWeightItem } from './exWeights'
 import { dismissPendingStatement, supersedePendingStatement } from './proposals'
+import { clearRecoveryStatement } from './recovery'
 import { bumpSeq, parseCounters, readCounters, SEQ } from './seq'
 import { upsertWorkouts, type WorkoutItem } from './workouts'
 
@@ -65,7 +66,8 @@ export async function writeImport(db: D1Database, data: ImportData, mode: 'repla
 
 /**
  * "Borrar todo" (contract §4.6): tombstones every workout, body-weight and working-weight row,
- * writes default docs and dismisses pending proposals, in one batch. Returns the new seq.
+ * deletes the recovery days, writes default docs and dismisses pending proposals, in one batch.
+ * Returns the new seq.
  */
 export async function resetAllData(db: D1Database, now: number): Promise<number> {
   const results = await db.batch([
@@ -74,6 +76,7 @@ export async function resetAllData(db: D1Database, now: number): Promise<number>
     tombstoneStatement(db, 'bodyweight', now),
     tombstoneStatement(db, 'ex_weights', now),
     dismissPendingStatement(db, now),
+    clearRecoveryStatement(db),
     ...DOC_KEYS.map(key => docPutStatement(db, { key, data: defaultDocData(key), updatedAt: now })),
     readCounters(db),
   ])

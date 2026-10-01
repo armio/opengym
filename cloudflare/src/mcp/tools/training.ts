@@ -1,11 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import * as z from 'zod'
-import { listBodyweight, listWorkouts } from '../../db'
+import { listBodyweight, listRecoveryDays, listWorkouts } from '../../db'
 import { addDays, sortWorkouts } from '../../engine'
 import { loadOwner, loadRecentProposals, loadTraining, toLoggedWorkout } from '../owner'
 import { BODYWEIGHT_DEFAULT_DAYS, buildBodyWeight, toWeighIns } from '../payloads/bodyweight'
 import { buildExerciseHistory, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT } from '../payloads/exerciseHistory'
 import { buildOverview } from '../payloads/overview'
+import { comparisonStart } from '../payloads/recovery'
 import { buildTrainingReview, REVIEW_DEFAULT_WEEKS, REVIEW_MAX_SESSIONS, REVIEW_MAX_WEEKS } from '../payloads/review'
 import { errorResult, jsonResult } from '../results'
 import { exerciseId, isoDate } from '../schemas'
@@ -30,14 +31,20 @@ export function registerTrainingTools(server: McpServer, db: D1Database): void {
 - plan: routines with their ids and exercises (id, name, mode, sets, reps/sec/min/speed, weight, the effective progression policy, their own prog, inc, repsMin, superset tag sg) and week (Monday first; null = rest day). Use these ids in propose_changes.
 - planHash, stats (workoutsTotal, last30Days, firstWorkout, lastWorkout, streakWeeks), recentWorkouts (last 5), bodyweight (latest, goal, change4w).
 - workingWeights: per exercise the heaviest done set ever (best, reps mode) and the confirmed working weight. Starting weights you propose are capped at best.
+- recovery (null unless the owner shares Apple Health data): latest day (rhr, hrv, sleepMin, inBedMin) and the last 7 days against the 28 before them, with signals. Details in get_recovery.
 - pendingProposals, recentDecisions (the owner's last 10 accept/dismiss decisions, with reverted ones marked) and previouslyDeclined (changes they turned down).
 - hints: what to do first when something is missing.`,
       annotations: READ_ONLY,
     },
     async () => {
       const owner = await loadOwner(db)
-      const [training, bodyweight, proposals] = await Promise.all([loadTraining(db, owner), listBodyweight(db), loadRecentProposals(db)])
-      return jsonResult(buildOverview({ owner, training, bodyweight: toWeighIns(bodyweight), proposals }))
+      const [training, bodyweight, proposals, recovery] = await Promise.all([
+        loadTraining(db, owner),
+        listBodyweight(db),
+        loadRecentProposals(db),
+        listRecoveryDays(db, { from: comparisonStart(owner.today), to: owner.today }),
+      ])
+      return jsonResult(buildOverview({ owner, training, bodyweight: toWeighIns(bodyweight), proposals, recovery }))
     },
   )
 

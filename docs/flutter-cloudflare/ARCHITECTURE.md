@@ -207,6 +207,9 @@ INSERT INTO counters (name, value) VALUES ('seq', 0);
 INSERT INTO counters (name, value) VALUES ('epoch', abs(random()) % 9007199254740991);
 ```
 
+`0002_recovery.sql` adds `recovery_daily (d PK, rhr, hrv, sleep_min, in_bed_min, updated_at)`:
+the Apple Health recovery days of §8. It has no `seq` and is not part of the sync protocol.
+
 ### 2.3 Engine rules shared by Dart and TypeScript
 
 The Dart engine (`app/lib/engine`) and the TypeScript engine (`cloudflare/src/engine`) implement
@@ -380,6 +383,8 @@ JSON in and out; errors are `{ "error": "<Spanish human message>" }`.
 | `POST /api/proposals/:id/revert` | device | revert an applied proposal atomically (§4.3) |
 | `POST /api/import/opengym` | device | import an openGym JSON backup (§4.4) |
 | `POST /api/reset` | device | `{ confirm: 'RESET' }` — erase all training data (§4.6) |
+| `POST /api/recovery` | device | `{ days: [{ d, rhr?, hrv?, sleepMin?, inBedMin? }] }` (≤ 400) — replace those days' Apple Health recovery metrics (§8) → `{ ok, stored, deleted }` |
+| `POST /api/recovery/clear` | device | delete every recovery day → `{ ok, deleted }` |
 
 ### 4.1 Device auth
 
@@ -482,8 +487,8 @@ lastReview, log, snapshots}`, `active: null`, `_ts: now`.
 ### 4.6 Reset and sign-out
 
 - **Borrar todo** (online only): `POST /api/reset {confirm: 'RESET'}` tombstones every workout,
-  body-weight and working-weight row, writes default docs (new seq; `athlete.savedAt = null`),
-  and dismisses pending proposals. The app then deletes its local files and pulls from 0.
+  body-weight and working-weight row, deletes the recovery days (§8), writes default docs (new
+  seq; `athlete.savedAt = null`), and dismisses pending proposals. The app then deletes its local files and pulls from 0.
 - **Cerrar sesión:** push dirty items first; if that fails, confirm
   "Hay cambios sin sincronizar — ¿salir igualmente?". Then `POST /api/auth/logout`, delete the
   local files and the token.
@@ -568,11 +573,12 @@ are inert until the owner accepts them in the app's **Coach** tab — say so.
 
 | Tool | Input | Output |
 |---|---|---|
-| `get_overview` | — | `meta {unit, lang, effortScale, today, tz}`; `athlete` (with `savedAt`, `updatedBy`); `plan` (routines with exercise **names**, mode, sets, reps/sec/min/speed, weight, effective policy, inc, repsMin, sg; `week` as weekday names → routine name/id); `planHash`; `stats {workoutsTotal, last30Days, firstWorkout, lastWorkout, streakWeeks}`; `recentWorkouts` (last 5, summarised); `bodyweight {latest, goal, change4w}`; `workingWeights [{id, name, best, workingWeight}]` over all history (best = max done-set `w` of reps-mode entries; workingWeight from `ex_weights`); `pendingProposals [{id, kind, summary, createdAt}]`; `recentDecisions` (last 10 resolved proposals: kind, outcome, accepted/rejected change types, `reverted`); `previouslyDeclined [{type, why}]` (last 15 rejected changes across proposals and the coach log) |
+| `get_overview` | — | `meta {unit, lang, effortScale, today, tz}`; `athlete` (with `savedAt`, `updatedBy`); `plan` (routines with exercise **names**, mode, sets, reps/sec/min/speed, weight, effective policy, inc, repsMin, sg; `week` as weekday names → routine name/id); `planHash`; `stats {workoutsTotal, last30Days, firstWorkout, lastWorkout, streakWeeks}`; `recentWorkouts` (last 5, summarised); `bodyweight {latest, goal, change4w}`; `recovery` (null without Apple Health data in the last 5 weeks, else `{latest, recent, baseline, comparable, signals}` as in `get_recovery`); `workingWeights [{id, name, best, workingWeight}]` over all history (best = max done-set `w` of reps-mode entries; workingWeight from `ex_weights`); `pendingProposals [{id, kind, summary, createdAt}]`; `recentDecisions` (last 10 resolved proposals: kind, outcome, accepted/rejected change types, `reverted`); `previouslyDeclined [{type, why}]` (last 15 rejected changes across proposals and the coach log) |
 | `get_training_review` | `since?` date, `weeks?` 1–52 | window default: since max(`resolved_at`) of `changes`/`nochange` proposals that were applied or dismissed, else the last 12 weeks. `window {from, to, sessions, truncated, workouts[]}` (≤ 60 most recent sessions, compact sets); `aggregates`: `exercises` (shared engine §2.3: mode-filtered sessions over all history, policy-aware stall count, cardio never stalled, next prescription, best e1RM + trend, avg RIR; included when stalls > 0 or sessions ≥ 3), `adherence` (per ISO week planned vs trained; `missedDays` = dates in the window whose `effectiveRoutineId` under the **current** plan + schedule is non-null and have no workout; reschedules inside the window split into moved vs rest — coach-Q6), `setsByBodyPart`, `setsByMuscle`, `medianSessionMin`, `hardSetShare`; `bodyweight {entries, goal, weeklyAvg}` |
 | `get_exercise_history` | `exerciseId`, `limit?` (20, max 100) | per session `{d, sets, topSet, e1rm, volume, avgRir}`, `best {e1rm, weight}`, `workingWeight`, `nextPrescription` if the exercise is in the plan |
 | `list_workouts` | `from?`, `to?`, `limit?` (20, max 200), `detail?` | `{ workouts: [...] }` newest first; `detail` includes every set |
 | `get_body_weight` | `from?`, `to?` | `{ unit, goal, entries, weeklyAvg, change4w, change12w }` |
+| `get_recovery` | `from?`, `to?` (default the 28 days to today; ≤ 400 days) | `{ source: 'Apple Health', from, to, latest, comparison, days }` — §8 |
 | `search_exercises` | `query?`, `bodyPart?`, `target?`, `equipment?` (string[]), `limit?` (25, max 100) | `{ exercises: [{id, name, bodyPart, target, equipment, custom}] }` — customs first, then the library; `query` matches English name and target/equipment plus the Spanish labels, case- and accent-insensitive |
 | `get_exercise` | `id` | full record: taxonomy (en + es), secondary muscles, Spanish instructions |
 | `list_proposals` | `status?` | `{ proposals: [...] }` newest first, without bulky bodies |
@@ -683,7 +689,7 @@ which proposal tool to finish with.
   Dropped: consent, cadence, refine box, Home's "Let the Coach build it". Home shows a Coach card
   "N propuestas de Claude" while any proposal is pending.
 - **Settings (Ajustes):** unit, rest seconds, sound, keep awake, effort scale, theme, accent,
-  body figure, GIF size, goal weight; devices (list/revoke), "Revocar acceso de Claude",
+  body figure, GIF size, goal weight; Apple Health on iPhone (§8); devices (list/revoke), "Revocar acceso de Claude",
   server info, "Exportar copia" (`share_plus`), "Importar copia de openGym" (`file_picker`,
   replace with confirmation), "Borrar todo", "Cerrar sesión", Acerca de (attribution, license).
 - **Optional / not ported:** CSV/XML import from other apps (phase 2; if built, a Dart port that
@@ -699,7 +705,7 @@ which proposal tool to finish with.
 app/                           Flutter app
   assets/exercises.json        generated catalogue (do not edit by hand)
   lib/main.dart, lib/app.dart
-  lib/data/                    models, AppState, local store, API client, sync, library
+  lib/data/                    models, AppState, local store, API client, sync, library, health/ (§8)
   lib/engine/                  pure Dart logic
   lib/ui/                      theme, shared widgets, screens/
   test/                        unit + widget tests (engine tests load docs/flutter-cloudflare/fixtures)
@@ -712,3 +718,58 @@ scripts/build-flutter-cloudflare-data.mjs
 
 The original React/Node app (`frontend/`, `api/`, `web/`) is untouched and remains the
 behavioural reference.
+
+---
+
+## 8. Apple Health (iPhone)
+
+HealthKit is per phone, so all of this is **device-only** (`app/lib/data/health/`), driven by
+`HealthSync` and configured in Ajustes → Apple Health. Its settings and bookkeeping live in
+`shared_preferences` (`opengym.health.v1`), never in `state.json` or the sync protocol. The
+`health` plugin is used on iOS only; elsewhere the section is hidden.
+
+- **Permissions:** read and write body weight; write workouts; read resting heart rate, HRV
+  (SDNN) and sleep analysis. iOS never reports whether reading was allowed: denied types read as
+  empty. The app needs the HealthKit entitlement (`ios/Runner/Runner.entitlements`).
+- **When it runs:** on start and on resume (every step), and 3 s after workouts or weigh-ins
+  change (exports only). Failures are kept as a Spanish `lastError`; nothing throws.
+
+### 8.1 Workouts → Health
+
+Every finished workout with a duration (`end > start`) that ended at most 7 days before Apple
+Health was connected is saved once as `TRADITIONAL_STRENGTH_TRAINING` from `start` to `end`,
+with an estimated active energy of 2.5 kcal per kg per hour (3.5 MET minus the resting 1 MET;
+body weight from the check-in, else the last weigh-in on or before its date; at most 3 h
+counted; none without a weight). The energy is stored on the workout only, so it does not feed
+the Move ring. A workout whose start or end changes is deleted and saved again; a deleted one
+(a tombstone, never a merely missing row) is deleted from Health by uuid.
+
+### 8.2 Body weight both ways
+
+- **Import:** readings from other sources in the window (90 days the first time, then from
+  3 days before the last run and at least 14 days) give, per local date, the latest reading. It
+  becomes that day's weigh-in (converted to `settings.unit`, rounded to 0.1, `t` = reading time)
+  unless openGym's weigh-in for the day is at least as recent, or the day's weigh-in was
+  deleted after the reading.
+- **Export:** weigh-ins entered in openGym (not imported) since 30 days before connecting are
+  saved in Health at `t`; changing one replaces the copy, deleting one deletes it. The app's
+  own copies are recognised by uuid and never imported back.
+
+### 8.3 Recovery → server → Claude
+
+With "Compartir recuperación con Claude" on, the app uploads one row per local date: `rhr`
+(mean resting heart rate), `hrv` (mean SDNN), `sleepMin` (union of asleep stages) and
+`inBedMin` (union of every sleep sample). A night counts toward the "sleep day" of its
+midpoint, the 24 h ending 18:00 local on that date; overlapping iPhone and Watch samples count
+once. The window is 90 days the first time, then from 3 days before the last upload and at
+least 14 days; uploads happen at most hourly unless forced. Empty days are sent too, so the
+server deletes stale ones (the phone is the source of truth). Turning sharing off, or
+disconnecting with it on, first calls `POST /api/recovery/clear`.
+
+`get_recovery` compares the 7 days ending `to` (`recent`, with `shortNights` under 6 h) with the
+28 days before them (`baseline`): mean, sd and n per metric. `comparable` needs ≥ 3 recent and
+≥ 10 baseline days of a metric. `signals` reports HRV below or above the baseline by more than
+one sd, resting HR above it by more than max(sd, 2 bpm), and sleep under 6 h a night on average
+or 45 min under the baseline. Recovery informs structure (a deload week, fewer hard sets), never
+day-to-day loads, and is never a diagnosis (server instructions and `review_training`).
+

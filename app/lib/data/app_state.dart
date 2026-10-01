@@ -267,6 +267,15 @@ class AppState extends ChangeNotifier {
   /// The most recent weigh-in (`lastBW`), or null.
   BodyWeight? get lastBodyWeight => bodyWeights.isEmpty ? null : bodyWeights.last;
 
+  /// True when workout [id] was deleted (a tombstone is kept until the next fresh pull).
+  bool isWorkoutDeleted(String id) => _data.workouts[id]?.deleted ?? false;
+
+  /// When the weigh-in of [d] was deleted (its tombstone's `updatedAt`), or null.
+  int? bodyWeightDeletedAt(String d) {
+    final rec = _data.bodyWeight[d];
+    return rec != null && rec.deleted ? rec.updatedAt : null;
+  }
+
   Map<String, ExWeight>? _exWeightsCache;
 
   /// Working weights by exercise id (`exWeights`). Unmodifiable.
@@ -581,6 +590,17 @@ class AppState extends ChangeNotifier {
 
   /// "Revocar acceso de Claude": revokes every OAuth grant of the MCP connector.
   Future<void> revokeClaudeAccess() => _guarded(() => _requireApi().revokeClaudeAccess());
+
+  /// Uploads Apple Health recovery days (contract §8), 400 per request.
+  Future<void> uploadRecovery(List<JsonMap> days) => _guarded(() async {
+    final api = _requireApi();
+    for (var i = 0; i < days.length; i += 400) {
+      await api.uploadRecovery(days.sublist(i, math.min(i + 400, days.length)));
+    }
+  });
+
+  /// Deletes every recovery day on the server ("Compartir recuperación" turned off).
+  Future<void> clearRecovery() => _guarded(() => _requireApi().clearRecovery());
 
   /// The openGym backup document `S` rebuilt from local data (contract §4.4 "export").
   JsonMap exportOpenGymState() {

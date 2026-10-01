@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Deploys the Worker to its custom domain and sets the owner password, then smoke-tests it.
 #
-#   CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… OPENGYM_OWNER_PASSWORD=… scripts/deploy.sh
+#   CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… OPENGYM_OWNER_PASSWORD=… scripts/deploy.sh [--set-password]
 #
 # The token needs Workers Scripts Edit/Admin on the account and Workers Routes Edit on the zone of
 # the custom domain (armio.cc); D1 Edit as well for `migrations apply`. OPENGYM_OWNER_PASSWORD
-# becomes the OWNER_PASSWORD secret (app login and Claude consent) and is never printed.
+# becomes the OWNER_PASSWORD secret (app login and Claude consent) on the first deploy, or with
+# --set-password; a redeploy keeps the current one (it may have been changed in the dashboard).
+# The smoke test logs in with it either way. It is never printed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,7 +26,13 @@ npm ci
 npm run typecheck
 npx wrangler d1 migrations apply opengym-db --remote   # no-op when the schema is current
 npx wrangler deploy
-printf '%s' "$OPENGYM_OWNER_PASSWORD" | npx wrangler secret put OWNER_PASSWORD
+# Listing must succeed: a failure here must not fall through to overwriting the password.
+secrets=$(npx wrangler secret list --format json)
+if [ "${1:-}" = "--set-password" ] || ! grep -q '"OWNER_PASSWORD"' <<<"$secrets"; then
+  printf '%s' "$OPENGYM_OWNER_PASSWORD" | npx wrangler secret put OWNER_PASSWORD
+else
+  echo "OWNER_PASSWORD is already set; keeping it (pass --set-password to replace it)."
+fi
 
 # A new custom domain can take a minute to get its certificate.
 for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do

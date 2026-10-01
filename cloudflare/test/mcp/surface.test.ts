@@ -9,7 +9,7 @@ beforeAll(async () => {
 })
 
 const READ_TOOLS = [
-  'get_overview', 'get_training_review', 'get_exercise_history', 'list_workouts', 'get_body_weight',
+  'get_overview', 'get_training_review', 'get_exercise_history', 'list_workouts', 'get_body_weight', 'get_recovery',
   'search_exercises', 'get_exercise', 'list_proposals', 'get_proposal',
 ]
 const PROPOSE_TOOLS = ['propose_plan', 'propose_changes', 'report_no_change']

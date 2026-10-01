@@ -8,6 +8,7 @@ import { health } from './health'
 import { importOpenGym } from './import'
 import { revokeAllGrants } from './oauth'
 import { resolve, revert } from './proposals'
+import { clearRecoveryDays, uploadRecovery } from './recovery'
 import { reset } from './reset'
 import { pull, pushPull } from './sync'
 
@@ -31,6 +32,8 @@ const ROUTES: Route[] = [
   { method: 'POST', path: new RegExp(`^/api/proposals/${ID}/revert$`), auth: true, handler: revert },
   { method: 'POST', path: /^\/api\/import\/opengym$/, auth: true, handler: importOpenGym },
   { method: 'POST', path: /^\/api\/reset$/, auth: true, handler: reset },
+  { method: 'POST', path: /^\/api\/recovery$/, auth: true, handler: uploadRecovery },
+  { method: 'POST', path: /^\/api\/recovery\/clear$/, auth: true, handler: clearRecoveryDays },
 ]
 
 async function dispatch(request: Request, env: Env, url: URL): Promise<Response> {

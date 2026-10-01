@@ -6,11 +6,12 @@
 // Without --password it reads OPENGYM_OWNER_PASSWORD from the environment (keeps it out of the
 // process list and shell history).
 // Read-only by default, so it is safe against production:
-//   1. /api/health, device login, a pull-only sync, logout (the device is revoked again);
+//   1. /api/health, device login, a pull-only sync, an empty recovery upload (writes nothing),
+//      logout (the device is revoked again);
 //   2. the MCP OAuth flow as a Claude Code-style client (dynamic registration with a loopback
 //      redirect, PKCE, the consent page with the owner password, code → token exchange);
-//   3. MCP initialize, tools/list, prompts/list, and the read tools get_overview and
-//      search_exercises.
+//   3. MCP initialize, tools/list, prompts/list, and the read tools get_overview,
+//      search_exercises and get_recovery.
 // With --write (local development only) it also proposes a plan through MCP, accepts it the way
 // the app does (POST /api/proposals/:id/resolve with the plan and coach docs) and checks that
 // get_overview reports the new plan.
@@ -61,6 +62,9 @@ if (!device) process.exit(1)
 const pull = await json(await fetch(`${ORIGIN}/api/sync?since=0`, { headers: appHeaders(device) }))
 check(typeof pull.seq === 'number' && typeof pull.epoch === 'number', 'GET /api/sync?since=0',
   `seq ${pull.seq}, ${pull.docs?.length ?? 0} docs, ${pull.workouts?.length ?? 0} workouts, ${pull.proposals?.length ?? 0} proposals`)
+const recoveryUpload = await fetch(`${ORIGIN}/api/recovery`, { method: 'POST', headers: appHeaders(device), body: JSON.stringify({ days: [] }) })
+const recoveryBody = await json(recoveryUpload)
+check(recoveryUpload.ok && recoveryBody.stored === 0, 'POST /api/recovery (empty upload)', recoveryUpload.ok ? '' : recoveryBody)
 
 // ── 2. OAuth as a Claude client ────────────────────────────────────────────────────────────────
 console.log('\nOAuth (Claude connector flow)')
@@ -147,7 +151,7 @@ const init = await mcp('initialize', { protocolVersion: '2025-06-18', capabiliti
 check(init.serverInfo?.name === 'opengym' && init.instructions, 'initialize', `${init.serverInfo?.name} ${init.serverInfo?.version}, protocol ${init.protocolVersion}`)
 const { tools } = await mcp('tools/list')
 const names = tools.map(t => t.name)
-const expected = ['get_overview', 'get_training_review', 'get_exercise_history', 'list_workouts', 'get_body_weight', 'search_exercises', 'get_exercise', 'list_proposals', 'get_proposal', 'update_athlete_profile', 'propose_plan', 'propose_changes', 'report_no_change']
+const expected = ['get_overview', 'get_training_review', 'get_exercise_history', 'list_workouts', 'get_body_weight', 'get_recovery', 'search_exercises', 'get_exercise', 'list_proposals', 'get_proposal', 'update_athlete_profile', 'propose_plan', 'propose_changes', 'report_no_change']
 check(expected.every(n => names.includes(n)), 'tools/list', `${names.length} tools`)
 const { prompts } = await mcp('prompts/list')
 check(prompts?.length >= 3, 'prompts/list', prompts?.map(p => p.name).join(', '))
@@ -159,6 +163,8 @@ const bench = search.data.exercises?.[0]
 check(!search.isError && bench, 'search_exercises "bench press"', bench ? `${bench.id} ${bench.name}` : search.text)
 const pecho = await tool('search_exercises', { query: 'pecho', limit: 3 })
 check(!pecho.isError && pecho.data.exercises?.length, 'search_exercises "pecho" (Spanish label)', pecho.data.exercises?.map(e => e.name).join(', '))
+const recovery = await tool('get_recovery')
+check(!recovery.isError && recovery.data.source === 'Apple Health', 'get_recovery', `${recovery.data.days?.length ?? 0} days, ${recovery.data.comparison?.signals?.length ?? 0} signals`)
 
 // ── 4. Writes (local only) ─────────────────────────────────────────────────────────────────────
 if (WRITE) {

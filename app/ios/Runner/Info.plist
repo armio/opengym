@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>openGym lee tu peso de Salud (por ejemplo, de tu báscula) y, si lo activas, tu frecuencia cardiaca en reposo, variabilidad cardiaca y sueño para que Claude tenga en cuenta tu recuperación.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>openGym guarda en Salud tus entrenamientos de fuerza y los pesajes que apuntas en la app.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
