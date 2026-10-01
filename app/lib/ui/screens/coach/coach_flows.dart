@@ -106,8 +106,9 @@ Future<bool> runCoachWrite(BuildContext context, Future<void> Function() write) 
     return true;
   } catch (e, stack) {
     // Malformed proposal data can surface as an Error from the engine; the draft is discarded
-    // either way, so report it like any other failure.
-    debugPrint('coach write failed: $e\n$stack');
+    // either way, so report it like any other failure (with the stack, as it is unexpected).
+    final expected = e is ApiException || e is ProposalException || e is ProposalUnitMismatch;
+    debugPrint(expected ? 'coach write failed: $e' : 'coach write failed: $e\n$stack');
     if (context.mounted) showToast(context, coachErrorText(e));
     return false;
   }

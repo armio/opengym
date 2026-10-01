@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../widgets/widgets.dart';
+import '../../../data/app_state.dart';
+import 'active_workout_view.dart';
+import 'start_chooser.dart';
 
-/// PLACEHOLDER — owned by the Workout track, which replaces this file.
-/// Start chooser and the guided active workout (specs/ui.md §3.5, §5).
+export 'services/rest_alerts.dart' show LocalRestAlerts, NoRestAlerts, RestAlerts;
+export 'services/screen_wake_lock.dart' show PlatformWakeLock, ScreenWakeLock;
+export 'services/workout_feedback.dart' show WorkoutFeedback;
+export 'services/workout_timers.dart' show Countdown, HoldTarget, WorkoutTimers;
+export 'elapsed_text.dart';
+export 'workout_controller.dart';
+
+/// The full-screen workout route (specs/ui.md §3.5, §5): the workout in progress, or the start
+/// chooser when there is none.
 class WorkoutScreen extends StatelessWidget {
   const WorkoutScreen({super.key});
 
+  /// The route name the launcher pushes it under.
+  static const routeName = '/workout';
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: PageBody(
-      children: [
-        ScreenHeader(
-          title: 'Entrenar',
-          leading: Navigator.of(context).canPop()
-              ? AppIconButton(icon: 'chevronLeft', tooltip: 'Atrás', onPressed: () => Navigator.of(context).pop())
-              : null,
-        ),
-        const EmptyState(icon: 'clipboard', message: 'Pantalla en construcción.'),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final active = context.select<AppState, bool>((s) => s.active != null);
+    return active ? const ActiveWorkoutView() : const StartChooser();
+  }
 }

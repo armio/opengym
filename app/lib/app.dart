@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'data/app_state.dart';
 import 'data/library.dart';
 import 'ui/screens/login/login_screen.dart';
+import 'ui/screens/workout/workout_screen.dart';
 import 'ui/shell.dart';
 import 'ui/theme.dart';
 import 'ui/widgets/widgets.dart';
@@ -16,15 +17,29 @@ final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 /// Loads local data and the session, then shows the login screen or the shell.
 ///
 /// Tests pass a ready [appState]; the app itself loads one with [loader] (default:
-/// [AppState.load] with the bundled exercise library).
+/// [AppState.load] with the bundled exercise library). Once loaded, one [WorkoutController]
+/// (timers, rest alerts, wake lock) lives as long as the app.
 class OpenGymApp extends StatefulWidget {
-  const OpenGymApp({super.key, this.appState, this.loader, this.workoutLauncher = const DefaultWorkoutLauncher()});
+  const OpenGymApp({
+    super.key,
+    this.appState,
+    this.loader,
+    this.workoutLauncher = const DefaultWorkoutLauncher(),
+    this.restAlerts,
+    this.wakeLock = const PlatformWakeLock(),
+  });
 
   final AppState? appState;
   final Future<AppState> Function()? loader;
 
-  /// What the centre "Entrenar" button does (the workout track supplies the real one).
+  /// How workouts start (the centre "Entrenar" button, Home, the start chooser).
   final WorkoutLauncher workoutLauncher;
+
+  /// The "Descanso terminado" notification (default: [LocalRestAlerts.instance]).
+  final RestAlerts? restAlerts;
+
+  /// Keeps the screen on during a workout.
+  final ScreenWakeLock wakeLock;
 
   @override
   State<OpenGymApp> createState() => _OpenGymAppState();
@@ -34,6 +49,19 @@ class _OpenGymAppState extends State<OpenGymApp> {
   late final Future<AppState> _state = widget.appState != null
       ? Future.value(widget.appState)
       : (widget.loader ?? () async => AppState.load(library: await ExerciseLibrary.load()))();
+  WorkoutController? _workout;
+
+  WorkoutController _workoutFor(AppState app) => _workout ??= WorkoutController(
+    app: app,
+    alerts: widget.restAlerts ?? LocalRestAlerts.instance,
+    wakeLock: widget.wakeLock,
+  );
+
+  @override
+  void dispose() {
+    _workout?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +75,13 @@ class _OpenGymAppState extends State<OpenGymApp> {
             home: snapshot.hasError ? _BootError(error: snapshot.error!) : const _Splash(),
           );
         }
+        final workout = _workoutFor(app);
         return MultiProvider(
           providers: [
             ChangeNotifierProvider<AppState>.value(value: app),
             Provider<WorkoutLauncher>.value(value: widget.workoutLauncher),
+            Provider<WorkoutController>.value(value: workout),
+            ChangeNotifierProvider<WorkoutTimers>.value(value: workout.timers),
           ],
           child: const _AppView(),
         );

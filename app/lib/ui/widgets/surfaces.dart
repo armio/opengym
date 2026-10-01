@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -253,67 +255,99 @@ class ListRow extends StatelessWidget implements GroupedRow {
   @override
   bool get hasIcon => icon != null || leading != null;
 
-  /// The widest a [value] may get, as a share of the row: the title gives way to the value
-  /// (`.lrow-v` is `flex: none`), but a very long value is cut rather than squeezing the title
-  /// to nothing.
-  static const double _maxValueShare = .6;
+  /// With a [value], the title keeps at most this share of the room it shares with the value
+  /// (and any [trailing] control) when both are long.
+  static const double _titleShare = .5;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.textStyles;
+    final titleStyle = t.rowTitle.copyWith(color: danger ? p.red : p.label);
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title, style: titleStyle),
+        if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: t.caption)],
+      ],
+    );
     final row = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 46),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        child: value == null ? _content(p, t, null) : LayoutBuilder(builder: (_, box) => _content(p, t, box.maxWidth)),
+        child: Row(
+          children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: 12),
+            ] else if (icon != null) ...[
+              IconBadge(icon: icon!, tint: iconTint),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: value == null
+                  ? Row(
+                      children: [
+                        Expanded(child: text),
+                        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+                      ],
+                    )
+                  : LayoutBuilder(builder: (context, box) => _withValue(context, text, titleStyle, box.maxWidth)),
+            ),
+            if (accessory == RowAccessory.chevron) ...[
+              const SizedBox(width: 6),
+              AppIcon('chevronRight', size: 18, color: p.label3),
+            ],
+            if (accessory == RowAccessory.check) ...[
+              const SizedBox(width: 6),
+              AppIcon('check', size: 18, color: p.acc),
+            ],
+          ],
+        ),
       ),
     );
     if (onTap == null) return row;
     return Pressable(onTap: onTap, pressedScale: 1, pressedColor: p.surface2, color: Colors.transparent, child: row);
   }
 
-  /// [width] is the row's inner width, known only when there is a [value] to size.
-  Widget _content(AppPalette p, AppTextStyles t, double? width) => Row(
-    children: [
-      if (leading != null) ...[
-        leading!,
-        const SizedBox(width: 12),
-      ] else if (icon != null) ...[
-        IconBadge(icon: icon!, tint: iconTint),
-        const SizedBox(width: 12),
-      ],
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, style: t.rowTitle.copyWith(color: danger ? p.red : p.label)),
-            if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: t.caption)],
-          ],
-        ),
-      ),
-      if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-      if (value != null) ...[
+  /// Title, [trailing] and the right-aligned [value] in [width]. The value (`.lrow-v`,
+  /// `flex: none`) takes what it needs; only when both are long does the title keep its natural
+  /// width up to [_titleShare] of the room, and the value wraps to a second line, then ellipsizes.
+  Widget _withValue(BuildContext context, Widget text, TextStyle titleStyle, double width) {
+    final t = context.textStyles;
+    final double valueMax;
+    if (trailing != null) {
+      valueMax = width * (1 - _titleShare) / 2;
+    } else {
+      final painter = TextPainter(
+        text: TextSpan(text: title, style: titleStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      final titleWidth = painter.width.ceilToDouble();
+      painter.dispose();
+      valueMax = width - 8 - math.min(titleWidth, width * _titleShare);
+    }
+    return Row(
+      children: [
+        Expanded(child: text),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
         const SizedBox(width: 8),
         ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: width! * _maxValueShare),
+          constraints: BoxConstraints(maxWidth: math.max(0, valueMax)),
           child: Text(
             value!,
-            style: t.rowTitle.copyWith(color: p.label2),
-            maxLines: 1,
+            style: t.rowTitle.copyWith(color: context.palette.label2),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
           ),
         ),
       ],
-      if (accessory == RowAccessory.chevron) ...[
-        const SizedBox(width: 6),
-        AppIcon('chevronRight', size: 18, color: p.label3),
-      ],
-      if (accessory == RowAccessory.check) ...[const SizedBox(width: 6), AppIcon('check', size: 18, color: p.acc)],
-    ],
-  );
+    );
+  }
 }
 
 /// One option of a [SelectRow].

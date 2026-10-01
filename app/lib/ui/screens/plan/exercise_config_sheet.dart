@@ -112,15 +112,24 @@ RoutineExercise initialConfigDraft(ExerciseIndex index, Exercise exercise, Routi
 
 /// `setMode(m)`: `{...defaultConfig(id, m), ...c, mode: m}` — keeps every value the form already
 /// has and fills only the missing ones.
+///
+/// Port rule (critic-G5, policies by mode at every write path): when the mode really changes,
+/// a rule the new mode does not take is dropped, and so is the step, whose unit changes
+/// (kg ↔ seconds). The original kept both, saving e.g. a timed hold with `prog: 'linear'`.
 RoutineExercise withConfigMode(ExerciseIndex index, RoutineExercise c, String mode) {
   final d = defaultConfig(index, c.id, mode);
-  return c.copy()
+  final out = c.copy()
     ..mode = mode
     ..reps ??= d.reps
     ..sec ??= d.sec
     ..min ??= d.min
     ..speed ??= d.speed
     ..weight ??= d.weight;
+  if (modeOf(index, c) != mode) {
+    if (!(policiesFor[mode] ?? const []).contains(out.prog)) out.prog = null;
+    out.inc = null;
+  }
+  return out;
 }
 
 /// `ExConfig.save` (specs/data-model.md §1.4.2): what the sheet writes for form state [c] in

@@ -53,6 +53,15 @@ class _PlanProposalScreenState extends State<PlanProposalScreen> {
     if (confirmed && mounted) await _run((f) => f.dismissPlan(p), done: 'Plan descartado');
   }
 
+  /// The plan's name and, from the second iteration on, "Revisión N".
+  static String? _subtitle(PlanBundle bundle, Proposal proposal) {
+    final parts = [
+      if (bundle.name.isNotEmpty) bundle.name,
+      if (proposal.iteration > 1) 'Revisión ${proposal.iteration}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
@@ -68,11 +77,7 @@ class _PlanProposalScreenState extends State<PlanProposalScreen> {
     return Scaffold(
       body: PageBody(
         children: [
-          ScreenHeader(
-            title: 'Tu plan',
-            subtitle: proposal.iteration > 1 ? 'Revisión ${proposal.iteration}' : bundle.name,
-            leading: const BackChevron(),
-          ),
+          ScreenHeader(title: 'Tu plan', subtitle: _subtitle(bundle, proposal), leading: const BackChevron()),
           const CoachOfflineNotice(),
           if (mismatch && proposal.isPending) UnitMismatchNotice(proposalUnit: proposal.unit),
           if (bundle.summary.isNotEmpty || bundle.basedOn.isNotEmpty)

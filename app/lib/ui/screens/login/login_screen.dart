@@ -8,6 +8,10 @@ import '../../../data/sync.dart';
 import '../../theme.dart';
 import '../../widgets/widgets.dart';
 
+/// The owner's Worker, prefilled on first launch. Builds for another deployment pass
+/// `--dart-define=OPENGYM_SERVER=https://…`; an empty value leaves the field blank.
+const defaultServerUrl = String.fromEnvironment('OPENGYM_SERVER', defaultValue: 'https://gym.armio.cc');
+
 /// Server address + owner password + device name → device login → first (pull-only) sync with
 /// progress → the app switches to the shell (contract §3.3.3, §4.1).
 class LoginScreen extends StatefulWidget {
@@ -31,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     final app = context.read<AppState>();
-    _server = TextEditingController(text: app.serverUrl ?? '');
+    _server = TextEditingController(text: app.serverUrl ?? defaultServerUrl);
     _deviceName = TextEditingController(text: app.deviceName ?? defaultDeviceName());
   }
 
@@ -109,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     autocorrect: false,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.url],
-                    decoration: const InputDecoration(hintText: 'https://opengym.tu-cuenta.workers.dev'),
+                    decoration: const InputDecoration(hintText: 'https://gym.armio.cc'),
                   ),
                   const SizedBox(height: 14),
                   _Label('Contraseña'),

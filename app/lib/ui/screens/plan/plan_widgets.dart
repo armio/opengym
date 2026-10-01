@@ -28,7 +28,11 @@ class DimNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final label = Text(text, textAlign: textAlign, style: context.textStyles.small.copyWith(color: p.label3));
+    final label = Text(
+      text,
+      textAlign: textAlign,
+      style: context.textStyles.small.copyWith(color: p.label3),
+    );
     if (icon == null) return label;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
