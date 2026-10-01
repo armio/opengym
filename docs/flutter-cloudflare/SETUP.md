@@ -12,6 +12,10 @@ Esta guía pone en marcha las tres piezas:
 La arquitectura completa y el contrato entre las piezas están en
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
+| Plan propuesto por Claude | Cambios, uno a uno | Entrenamiento guiado | Resumen | Progreso |
+|---|---|---|---|---|
+| <img src="screenshots/claude-plan.png" width="160"> | <img src="screenshots/claude-changes.png" width="160"> | <img src="screenshots/workout.png" width="160"> | <img src="screenshots/summary.png" width="160"> | <img src="screenshots/progress.png" width="160"> |
+
 ---
 
 ## 1. Backend (Cloudflare)
