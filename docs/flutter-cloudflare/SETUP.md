@@ -48,6 +48,15 @@ npm run db:migrate:remote   # debe decir que no hay migraciones pendientes
 npm run deploy              # crea gym.armio.cc (DNS + certificado) y publica el Worker
 ```
 
+O todo en un paso, sin `wrangler login`, con un token de API de Cloudflare. El token necesita
+**Workers Scripts: Edit** en la cuenta, **Workers Routes: Edit** en la zona `armio.cc` y
+**D1: Edit**:
+
+```sh
+export CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… OPENGYM_OWNER_PASSWORD=…
+scripts/deploy.sh    # migraciones, deploy, secreto OWNER_PASSWORD y prueba de humo
+```
+
 Comprueba que todo funciona (solo lectura, seguro en producción):
 
 ```sh

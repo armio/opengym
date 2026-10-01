@@ -3,6 +3,8 @@
 //
 //   node scripts/smoke.mjs --origin http://localhost:8787 --password '<OWNER_PASSWORD>' [--write]
 //
+// Without --password it reads OPENGYM_OWNER_PASSWORD from the environment (keeps it out of the
+// process list and shell history).
 // Read-only by default, so it is safe against production:
 //   1. /api/health, device login, a pull-only sync, logout (the device is revoked again);
 //   2. the MCP OAuth flow as a Claude Code-style client (dynamic registration with a loopback
@@ -22,10 +24,10 @@ const args = Object.fromEntries(
   }, []),
 )
 const ORIGIN = String(args.origin ?? 'http://localhost:8787').replace(/\/$/, '')
-const PASSWORD = args.password
+const PASSWORD = args.password ?? process.env.OPENGYM_OWNER_PASSWORD
 const WRITE = args.write === true
 if (!PASSWORD || PASSWORD === true) {
-  console.error('usage: node scripts/smoke.mjs --origin <url> --password <OWNER_PASSWORD> [--write]')
+  console.error('usage: node scripts/smoke.mjs --origin <url> [--password <OWNER_PASSWORD> | env OPENGYM_OWNER_PASSWORD] [--write]')
   process.exit(2)
 }
 
