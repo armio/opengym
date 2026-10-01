@@ -163,16 +163,21 @@ if (WRITE) {
   console.log('\nPropose → accept (as the app)')
   const squat = (await tool('search_exercises', { query: 'barbell full squat', limit: 1 })).data.exercises[0]
   const row = (await tool('search_exercises', { query: 'barbell bent over row', limit: 1 })).data.exercises[0]
+  // A saved athlete profile fixes how many training days a plan must schedule.
+  const athlete = overview.data.athlete ?? {}
+  const days = athlete.savedAt != null && Number.isInteger(athlete.daysPerWeek) ? athlete.daysPerWeek : 2
+  const week = Object.fromEntries([1, 3, 5, 2, 4, 6, 0].slice(0, days).map(d => [d, 'r1']))
   const proposed = await tool('propose_plan', {
-    name: 'Fuerza 2 días', summary: 'Dos sesiones de cuerpo completo para empezar.', basedOn: 'sin historial',
-    week: { 1: 'r1', 4: 'r1' },
+    name: `Fuerza ${days} días`, summary: 'Sesiones de cuerpo completo para empezar.', basedOn: 'sin historial',
+    week,
     routines: [{ id: 'r1', name: 'Cuerpo completo', emoji: 'barbell', prog: 'linear', why: 'Básicos compuestos.', ex: [
       { id: squat.id, sets: 3, mode: 'reps', reps: 5, why: 'Base de pierna.' },
       { id: bench.id, sets: 3, mode: 'reps', reps: 5, why: 'Empuje horizontal.' },
       { id: row.id, sets: 3, mode: 'reps', reps: 8, why: 'Tirón horizontal.' },
     ] }],
   })
-  check(!proposed.isError && proposed.data.proposalId, 'propose_plan', proposed.data.proposalId ?? proposed.text)
+  check(!proposed.isError && proposed.data.proposalId, 'propose_plan', proposed.data?.proposalId ?? proposed.text)
+  if (proposed.isError) process.exit(1)
 
   const synced = await json(await fetch(`${ORIGIN}/api/sync?since=0`, { headers: appHeaders(device) }))
   const proposal = synced.proposals?.find(p => p.id === proposed.data.proposalId)
@@ -183,7 +188,7 @@ if (WRITE) {
   const newPlan = {
     ...planDoc.data,
     routines: [...(planDoc.data.routines ?? []), { ...proposal.bundle.routines[0], id: rid, ex: proposal.bundle.routines[0].ex.map(({ why, name, ...e }) => e), why: undefined }],
-    week: { 1: rid, 4: rid },
+    week: Object.fromEntries(Object.keys(week).map(d => [d, rid])),
   }
   const newCoach = { ...coachDoc.data, log: [...(coachDoc.data.log ?? []), { id: `l${Date.now()}`, kind: 'create', at: Date.now(), proposalId: proposal.id, summary: proposal.summary, routines: 1, iteration: 1 }] }
   const resolve = await fetch(`${ORIGIN}/api/proposals/${proposal.id}/resolve`, {
