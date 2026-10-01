@@ -1,0 +1,2788 @@
+{
+  "about": "frontend/src/lib/progression.js (engine.md §4, §10.1–§10.13, §11) with engine-Q1, engine-Q2 and critic-G3.",
+  "constants": {
+    "POLICIES": ["off","linear","greyskull","double","time"],
+    "POLICIES_FOR": {"reps":["off","linear","greyskull","double"],"time":["off","time"],"cardio":["off"]},
+    "DELOAD_AFTER": {"linear":3,"greyskull":1,"double":3,"time":3},
+    "DEFAULT_SEC_INCREMENT": 5
+  },
+  "groups": {
+    "readSession": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "every set made its reps: hit",
+          "ref": "§10.1 #1",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":3,"reps":5},
+              "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true},{"w":60,"r":6,"done":true}]
+            }
+          },
+          "expected": {"mode":"reps","goal":5,"reps":[5,5,6],"weight":60,"low":5,"amrap":6,"ok":true}
+        },
+        {
+          "name": "short reps on a checked set: miss",
+          "ref": "§10.1 #2",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":3,"reps":5},
+              "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true},{"w":60,"r":3,"done":true}]
+            }
+          },
+          "expected": {"mode":"reps","goal":5,"reps":[5,5,3],"weight":60,"low":3,"amrap":3,"ok":false}
+        },
+        {
+          "name": "unchecked set: miss, weight from done sets",
+          "ref": "§10.1 #3",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":3,"reps":5},
+              "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true},{"w":60,"r":0,"done":false}]
+            }
+          },
+          "expected": {"mode":"reps","goal":5,"reps":[5,5,0],"weight":60,"low":0,"amrap":0,"ok":false}
+        },
+        {
+          "name": "fewer sets than prescribed: miss",
+          "ref": "§10.1 #4",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":3,"reps":5},
+              "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true}]
+            }
+          },
+          "expected": {"mode":"reps","goal":5,"reps":[5,5],"weight":60,"low":5,"amrap":5,"ok":false}
+        },
+        {
+          "name": "nothing prescribed: miss",
+          "ref": "§10.1 #5",
+          "args": {"entry":{"id":"0001","target":{},"sets":[{"w":60,"r":5,"done":true}]}},
+          "expected": {"mode":"reps","goal":0,"reps":[5],"weight":60,"low":5,"amrap":5,"ok":false}
+        },
+        {
+          "name": "timed session by the hold",
+          "ref": "§10.1 #6",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":2,"sec":45,"mode":"time"},
+              "sets": [{"sec":45,"w":0,"done":true},{"sec":50,"w":0,"done":true}]
+            }
+          },
+          "expected": {"mode":"time","goal":45,"held":[45,50],"weight":0,"best":50,"ok":true}
+        },
+        {
+          "name": "timed session short",
+          "ref": "§10.1 #7",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "target": {"sets":2,"sec":45,"mode":"time"},
+              "sets": [{"sec":45,"done":true},{"sec":30,"done":true}]
+            }
+          },
+          "expected": {"mode":"time","goal":45,"held":[45,30],"weight":0,"best":45,"ok":false}
+        },
+        {
+          "name": "no sets, judged against the fallback",
+          "ref": "§11",
+          "args": {"entry":{"id":"0001","sets":[]},"fallback":{"sets":3,"reps":5}},
+          "expected": {"mode":"reps","goal":5,"reps":[],"weight":0,"low":0,"amrap":0,"ok":false}
+        },
+        {
+          "name": "null entry and fallback",
+          "ref": "§11",
+          "args": {"entry":null,"fallback":null},
+          "expected": {"mode":"reps","goal":0,"reps":[],"weight":0,"low":0,"amrap":0,"ok":false}
+        },
+        {
+          "name": "cardio is read the reps way (goal 0)",
+          "args": {"entry":{"id":"3220","sets":[{"min":20,"speed":9,"done":true}]}},
+          "expected": {"mode":"cardio","goal":0,"reps":[0],"weight":0,"low":0,"amrap":0,"ok":false}
+        },
+        {
+          "name": "legacy entry judged against the fallback",
+          "args": {
+            "entry": {
+              "id": "0001",
+              "sets": [{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true},{"w":60,"r":5,"done":true}]
+            },
+            "fallback": {"id":"0001","sets":3,"reps":5}
+          },
+          "expected": {"mode":"reps","goal":5,"reps":[5,5,5],"weight":60,"low":5,"amrap":5,"ok":true}
+        }
+      ]
+    },
+    "sessionsFor": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "only workouts where the exercise was logged",
+          "ref": "§10.11",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [{"id":"0001","target":{"sets":1,"reps":5},"sets":[{"w":60,"r":5,"done":true}]}]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [{"id":"0001","target":{"sets":1,"reps":5},"sets":[{"w":60,"r":0,"done":false}]}]
+                },
+                {"d":"2026-01-03","entries":[{"id":"other","target":{},"sets":[{"w":20,"r":5,"done":true}]}]}
+              ]
+            }
+          },
+          "expected": [
+            {"d":"2026-01-01","mode":"reps","goal":5,"reps":[5],"weight":60,"low":5,"amrap":5,"ok":true}
+          ]
+        },
+        {
+          "name": "legacy entry without target",
+          "ref": "§10.11",
+          "args": {
+            "exId": "0001",
+            "state": {
+              "unit": "kg",
+              "workouts": [{"d":"2026-01-01","entries":[{"id":"0001","sets":[{"w":60,"r":5,"done":true}]}]}]
+            }
+          },
+          "expected": [
+            {"d":"2026-01-01","mode":"reps","goal":0,"reps":[5],"weight":60,"low":5,"amrap":5,"ok":false}
+          ]
+        },
+        {
+          "name": "legacy entries judged against the fallback",
+          "args": {
+            "exId": "0001",
+            "fallback": {"id":"0001","sets":3,"reps":5},
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":4,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": [
+            {"d":"2026-03-01","mode":"reps","goal":5,"reps":[5,5,5],"weight":60,"low":5,"amrap":5,"ok":true},
+            {"d":"2026-03-02","mode":"reps","goal":5,"reps":[5,4,5],"weight":60,"low":4,"amrap":5,"ok":false}
+          ]
+        }
+      ]
+    },
+    "stallCount": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"[true,true]","ref":"§10.2","args":{"sessions":[{"ok":true},{"ok":true}]},"expected":0},
+        {"name":"[true,false]","ref":"§10.2","args":{"sessions":[{"ok":true},{"ok":false}]},"expected":1},
+        {
+          "name": "[false,false,false]",
+          "ref": "§10.2",
+          "args": {"sessions":[{"ok":false},{"ok":false},{"ok":false}]},
+          "expected": 3
+        },
+        {
+          "name": "[false,true,false]",
+          "ref": "§10.2",
+          "args": {"sessions":[{"ok":false},{"ok":true},{"ok":false}]},
+          "expected": 1
+        },
+        {"name":"[]","ref":"§10.2","args":{"sessions":[]},"expected":0}
+      ]
+    },
+    "doubleStallCount": {
+      "scope": "shared",
+      "note": "Walk back from the last session; session i is a stall iff !ok && (i == 0 || sessions[i-1].weight != weight || low <= sessions[i-1].low).",
+      "fix": "engine-Q1",
+      "vectors": [
+        {
+          "name": "climbing inside the range is progress",
+          "args": {
+            "sessions": [
+              {"ok":false,"weight":40,"low":9},
+              {"ok":false,"weight":40,"low":10},
+              {"ok":false,"weight":40,"low":11}
+            ]
+          },
+          "expected": 0
+        },
+        {
+          "name": "flat for three sessions",
+          "args": {
+            "sessions": [
+              {"ok":false,"weight":40,"low":9},
+              {"ok":false,"weight":40,"low":9},
+              {"ok":false,"weight":40,"low":9}
+            ]
+          },
+          "expected": 3
+        },
+        {
+          "name": "regression counts back to the first session",
+          "args": {"sessions":[{"ok":false,"weight":40,"low":10},{"ok":false,"weight":40,"low":9}]},
+          "expected": 2
+        },
+        {
+          "name": "improvement stops the count",
+          "args": {
+            "sessions": [
+              {"ok":false,"weight":40,"low":8},
+              {"ok":false,"weight":40,"low":10},
+              {"ok":false,"weight":40,"low":10}
+            ]
+          },
+          "expected": 1
+        },
+        {
+          "name": "a weight change is not progress",
+          "args": {
+            "sessions": [
+              {"ok":false,"weight":40,"low":9},
+              {"ok":false,"weight":42.5,"low":8},
+              {"ok":false,"weight":42.5,"low":8}
+            ]
+          },
+          "expected": 3
+        },
+        {
+          "name": "a hit ends the count",
+          "args": {"sessions":[{"ok":false,"weight":40,"low":9},{"ok":true,"weight":40,"low":12}]},
+          "expected": 0
+        },
+        {"name":"no sessions","args":{"sessions":[]},"expected":0}
+      ]
+    },
+    "policyFor": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "#1 {\"id\":\"0001\"} null → linear",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"0001"},"routine":null,"mode":"reps"},
+          "expected": "linear"
+        },
+        {
+          "name": "#2 {\"id\":\"0001\",\"mode\":\"time\"} null → off",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"0001","mode":"time"},"routine":null,"mode":"time"},
+          "expected": "off"
+        },
+        {
+          "name": "#3 {\"id\":\"3220\"} null → off",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"3220"},"routine":null,"mode":"cardio"},
+          "expected": "off"
+        },
+        {
+          "name": "#4 {\"id\":\"0001\"} {\"prog\":\"greyskull\"} → greyskull",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"0001"},"routine":{"prog":"greyskull"},"mode":"reps"},
+          "expected": "greyskull"
+        },
+        {
+          "name": "#5 {\"id\":\"0001\",\"prog\":\"double\"} {\"prog\":\"greyskull\"} → double",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"0001","prog":"double"},"routine":{"prog":"greyskull"},"mode":"reps"},
+          "expected": "double"
+        },
+        {
+          "name": "#6 {\"id\":\"0001\",\"mode\":\"time\",\"prog\":\"greyskull\"} null → off",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"0001","mode":"time","prog":"greyskull"},"routine":null,"mode":"time"},
+          "expected": "off"
+        },
+        {
+          "name": "#7 {\"id\":\"3220\",\"prog\":\"linear\"} null → off",
+          "ref": "§10.3",
+          "args": {"cfg":{"id":"3220","prog":"linear"},"routine":null,"mode":"cardio"},
+          "expected": "off"
+        },
+        {
+          "name": "#8 {\"id\":\"0001\",\"mode\":\"time\"} {\"prog\":\"time\"} → time",
+          "args": {"cfg":{"id":"0001","mode":"time"},"routine":{"prog":"time"},"mode":"time"},
+          "expected": "time"
+        },
+        {
+          "name": "#9 {\"id\":\"0001\"} {\"prog\":\"time\"} → off",
+          "args": {"cfg":{"id":"0001"},"routine":{"prog":"time"},"mode":{"$js":"undefined"}},
+          "expected": "off"
+        },
+        {
+          "name": "#10 {\"id\":\"3220\"} {\"prog\":\"linear\"} → off",
+          "args": {"cfg":{"id":"3220"},"routine":{"prog":"linear"},"mode":{"$js":"undefined"}},
+          "expected": "off"
+        },
+        {
+          "name": "#11 {\"id\":\"0001\",\"prog\":\"vibes\"} {\"prog\":\"double\"} → off",
+          "args": {"cfg":{"id":"0001","prog":"vibes"},"routine":{"prog":"double"},"mode":"reps"},
+          "expected": "off"
+        }
+      ]
+    },
+    "defaultIncrement": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"0001 kg","ref":"§10.4","args":{"exId":"0001","unit":"kg"},"expected":2.5},
+        {"name":"1512 kg","ref":"§10.4","args":{"exId":"1512","unit":"kg"},"expected":5},
+        {"name":"0001 lb","ref":"§10.4","args":{"exId":"0001","unit":"lb"},"expected":5},
+        {"name":"1512 lb","ref":"§10.4","args":{"exId":"1512","unit":"lb"},"expected":10},
+        {"name":"nope kg","ref":"§10.4","args":{"exId":"nope","unit":"kg"},"expected":2.5},
+        {"name":"0007 kg","args":{"exId":"0007","unit":"kg"},"expected":5},
+        {"name":"1368 lb","args":{"exId":"1368","unit":"lb"},"expected":10},
+        {"name":"0025 stone","args":{"exId":"0025","unit":"stone"},"expected":2.5},
+        {
+          "name": "cx-legs kg",
+          "args": {
+            "exId": "cx-legs",
+            "unit": "kg",
+            "customEx": [
+              {"id":"cx-legs","n":"sled push","bp":"upper legs","desc":"","tg":"","eq":"custom","custom":true}
+            ]
+          },
+          "expected": 5
+        }
+      ]
+    },
+    "nextPrescription": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "linear: nothing logged yet",
+          "ref": "§10.5 #1",
+          "args": {
+            "state": {"unit":"kg","workouts":[]},
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "first",
+            "why": ["Nothing logged yet — this session sets the baseline."]
+          }
+        },
+        {
+          "name": "linear: clean session adds the increment",
+          "ref": "§10.5 #2",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "linear: one miss holds",
+          "ref": "§10.5 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "linear: unchecked last set holds",
+          "ref": "§10.5 #4",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":0,"done":false}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "linear: two misses hold",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",1,3]
+          }
+        },
+        {
+          "name": "linear: three misses deload",
+          "ref": "§10.5 #5",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":4,"done":true},
+                        {"w":60,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "deload",
+            "weight": 55,
+            "why": ["Missed reps {0} sessions running — reset to {1} {2} and work back up.",3,55,"kg"]
+          }
+        },
+        {
+          "name": "linear: a good session clears the stall",
+          "ref": "§10.5 #6",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "linear: never below one increment",
+          "ref": "§10.5 #7",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":2.5},
+                      "sets": [
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":2.5},
+                      "sets": [
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":2.5},
+                      "sets": [
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true},
+                        {"w":2.5,"r":1,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "deload",
+            "weight": 2.5,
+            "why": ["Missed reps {0} sessions running — reset to {1} {2} and work back up.",3,2.5,"kg"]
+          }
+        },
+        {
+          "name": "linear: a deload is always lighter",
+          "ref": "§10.5 #8 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":5},
+                      "sets": [{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":5},
+                      "sets": [{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":5},
+                      "sets": [{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true},{"w":5,"r":1,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "deload",
+            "weight": 2.5,
+            "why": ["Missed reps {0} sessions running — reset to {1} {2} and work back up.",3,2.5,"kg"]
+          }
+        },
+        {
+          "name": "linear: heavy body part takes 5",
+          "ref": "§10.5 #9",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "1512",
+                      "target": {"sets":3,"reps":5,"weight":100},
+                      "sets": [
+                        {"w":100,"r":5,"done":true},
+                        {"w":100,"r":5,"done":true},
+                        {"w":100,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"1512","sets":3,"reps":5,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 105,
+            "why": ["Every rep last time — {0} {1} more.",5,"kg"]
+          }
+        },
+        {
+          "name": "linear: per-exercise increment",
+          "ref": "§10.5 #10",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear","inc":1}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 61,
+            "why": ["Every rep last time — {0} {1} more.",1,"kg"]
+          }
+        },
+        {
+          "name": "linear: pounds",
+          "ref": "§10.5 #11",
+          "args": {
+            "state": {
+              "unit": "lb",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":135},
+                      "sets": [
+                        {"w":135,"r":5,"done":true},
+                        {"w":135,"r":5,"done":true},
+                        {"w":135,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 140,
+            "why": ["Every rep last time — {0} {1} more.",5,"lb"]
+          }
+        },
+        {
+          "name": "linear: off-grid weight snaps onto the grid",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":61},
+                      "sets": [
+                        {"w":61,"r":5,"done":true},
+                        {"w":61,"r":5,"done":true},
+                        {"w":61,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "linear: routine default applies",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5},
+            "routine": {"id":"r1","prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "bodyweight: never deloads",
+          "ref": "§10.6 #1",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 0,
+            "reps": 10,
+            "why": ["Bodyweight — same target again until every set is clean."]
+          }
+        },
+        {
+          "name": "bodyweight: progresses in reps",
+          "ref": "§10.6 #2",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 0,
+            "reps": 11,
+            "why": ["Bodyweight — every rep last time, so go for {0} this time.",11]
+          }
+        },
+        {
+          "name": "bodyweight: linear holds too",
+          "ref": "§10.6 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 0,
+            "reps": 10,
+            "why": ["Bodyweight — same target again until every set is clean."]
+          }
+        },
+        {
+          "name": "bodyweight: greyskull holds too",
+          "ref": "§10.6 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "hold",
+            "weight": 0,
+            "reps": 10,
+            "why": ["Bodyweight — same target again until every set is clean."]
+          }
+        },
+        {
+          "name": "bodyweight: double holds too",
+          "ref": "§10.6 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":4,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "hold",
+            "weight": 0,
+            "reps": 10,
+            "why": ["Bodyweight — same target again until every set is clean."]
+          }
+        },
+        {
+          "name": "bodyweight: load goes up once weighted",
+          "ref": "§10.6 #4",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":10,"r":10,"done":true},
+                        {"w":10,"r":10,"done":true},
+                        {"w":10,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 12.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "bodyweight: no goal anywhere",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 0,
+            "why": ["Bodyweight — same target again until every set is clean."]
+          }
+        },
+        {
+          "name": "greyskull: final set makes the target",
+          "ref": "§10.7 #1",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "greyskull: doubled reps double the jump",
+          "ref": "§10.7 #2",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "up",
+            "weight": 65,
+            "why": ["Last set hit {0} reps — twice the target, so take a double jump of {1} {2}.",10,5,"kg"]
+          }
+        },
+        {
+          "name": "greyskull: first failure resets",
+          "ref": "§10.7 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "deload",
+            "weight": 55,
+            "why": ["Missed reps — reset to {0} {1} and work back up.",55,"kg"]
+          }
+        },
+        {
+          "name": "greyskull: resets from the reduced weight",
+          "ref": "§10.7 #4",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":3,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":55},
+                      "sets": [
+                        {"w":55,"r":5,"done":true},
+                        {"w":55,"r":5,"done":true},
+                        {"w":55,"r":2,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "deload",
+            "weight": 50,
+            "why": ["Missed reps {0} sessions running — reset to {1} {2} and work back up.",2,50,"kg"]
+          }
+        },
+        {
+          "name": "double: top of the range adds weight",
+          "ref": "§10.8 #1 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "up",
+            "weight": 42.5,
+            "reps": 8,
+            "why": ["Top of the rep range in every set — {0} {1} more, back to {2} reps.",2.5,"kg",8]
+          }
+        },
+        {
+          "name": "double: inside the range aims one higher",
+          "ref": "§10.8 #2 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":10,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "hold",
+            "weight": 40,
+            "reps": 10,
+            "why": ["Same weight — aim for {0} reps this time.",10]
+          }
+        },
+        {
+          "name": "double: never above the top",
+          "ref": "§10.8 #3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":11,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "hold",
+            "weight": 40,
+            "reps": 12,
+            "why": ["Same weight — aim for {0} reps this time.",12]
+          }
+        },
+        {
+          "name": "double: flat for three sessions deloads",
+          "ref": "§10.8 #4 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "deload",
+            "weight": 35,
+            "reps": 8,
+            "why": ["Stalled {0} sessions — deload to {1} {2}.",3,35,"kg"]
+          }
+        },
+        {
+          "name": "double: bottom defaults to top − 2",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "up",
+            "weight": 42.5,
+            "reps": 10,
+            "why": ["Top of the rep range in every set — {0} {1} more, back to {2} reps.",2.5,"kg",10]
+          }
+        },
+        {
+          "name": "double: an unchecked set aims at the bottom",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":11,"done":true},
+                        {"w":40,"r":11,"done":true},
+                        {"w":40,"r":0,"done":false}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "hold",
+            "weight": 40,
+            "reps": 8,
+            "why": ["Same weight — aim for {0} reps this time.",8]
+          }
+        },
+        {
+          "name": "double: climbing inside the range is not a stall",
+          "ref": "§11 (amended)",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":10,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":11,"done":true},
+                        {"w":40,"r":10,"done":true},
+                        {"w":40,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":11,"done":true},
+                        {"w":40,"r":11,"done":true},
+                        {"w":40,"r":11,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "hold",
+            "weight": 40,
+            "reps": 12,
+            "why": ["Same weight — aim for {0} reps this time.",12]
+          },
+          "fix": "engine-Q1",
+          "original": {
+            "policy": "double",
+            "kind": "deload",
+            "weight": 35,
+            "reps": 8,
+            "why": ["Stalled {0} sessions — deload to {1} {2}.",3,35,"kg"]
+          }
+        },
+        {
+          "name": "double: regression after progress still deloads after three",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":10,"done":true},
+                        {"w":40,"r":10,"done":true},
+                        {"w":40,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true},
+                        {"w":40,"r":9,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "deload",
+            "weight": 35,
+            "reps": 8,
+            "why": ["Stalled {0} sessions — deload to {1} {2}.",3,35,"kg"]
+          }
+        },
+        {
+          "name": "time: full holds add time",
+          "ref": "§10.9 #1 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":45,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "up",
+            "sec": 50,
+            "why": ["Held every set for the full time — target up by {0}s.",5]
+          }
+        },
+        {
+          "name": "time: a short hold repeats the target",
+          "ref": "§10.9 #2 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":38,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "hold",
+            "sec": 45,
+            "why": ["Last time came up short — same target again."]
+          }
+        },
+        {
+          "name": "time: three short sessions back off",
+          "ref": "§10.9 #3 / §11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":30,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":32,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":31,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "deload",
+            "sec": 40,
+            "why": ["Short {0} sessions in a row — back off to {1}s and build up again.",3,40]
+          }
+        },
+        {
+          "name": "time: reps history is ignored",
+          "ref": "§10.9 #4",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "first",
+            "why": ["Nothing logged yet — this session sets the baseline."]
+          }
+        },
+        {
+          "name": "time: inc 10 up",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":45,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time","inc":10}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "up",
+            "sec": 55,
+            "why": ["Held every set for the full time — target up by {0}s.",10]
+          }
+        },
+        {
+          "name": "time: inc 10 deload",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":30,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":32,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":31,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time","inc":10}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "deload",
+            "sec": 40,
+            "why": ["Short {0} sessions in a row — back off to {1}s and build up again.",3,40]
+          }
+        },
+        {
+          "name": "time: the deload step follows inc",
+          "ref": "contract §2.3",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":30,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":32,"w":0,"done":true}]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-02-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":31,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45,"prog":"time","inc":15}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "deload",
+            "sec": 30,
+            "why": ["Short {0} sessions in a row — back off to {1}s and build up again.",3,30]
+          },
+          "fix": "engine-Q2",
+          "original": {
+            "policy": "time",
+            "kind": "deload",
+            "sec": 40,
+            "why": ["Short {0} sessions in a row — back off to {1}s and build up again.",3,40]
+          }
+        },
+        {
+          "name": "time: no policy anywhere is off",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":45,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45},
+            "routine": {"id":"r1"}
+          },
+          "expected": {"policy":"off","kind":"off"}
+        },
+        {
+          "name": "time: routine policy time applies",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":45,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":45},
+            "routine": {"id":"r1","prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "up",
+            "sec": 50,
+            "why": ["Held every set for the full time — target up by {0}s.",5]
+          }
+        },
+        {
+          "name": "off: no opinion",
+          "ref": "§10.10",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"prog":"off"}
+          },
+          "expected": {"policy":"off","kind":"off"}
+        },
+        {
+          "name": "off: cardio always",
+          "ref": "§10.10",
+          "args": {"state":{"unit":"kg","workouts":[]},"cfg":{"id":"3220","sets":1,"min":20}},
+          "expected": {"policy":"off","kind":"off"}
+        },
+        {
+          "name": "legacy: judged against the plan",
+          "ref": "§10.12",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "legacy: long clean history",
+          "ref": "§10.12",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-03",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-04",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-05",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-06",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-07",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-08",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-09",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-10",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-03-11",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "legacy: a genuine miss",
+          "ref": "§10.12",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":2,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "legacy: extra reps are a hit",
+          "ref": "§10.12",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":6,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "legacy: short reps hold",
+          "ref": "§10.12",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":4,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "legacy: a changed plan target never triggers the new baseline",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-03-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "target changed: linear",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "first",
+            "why": ["Plan target changed — this session sets the new baseline."]
+          },
+          "fix": "critic-G3",
+          "original": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "target changed: greyskull",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"greyskull"}
+          },
+          "expected": {
+            "policy": "greyskull",
+            "kind": "first",
+            "why": ["Plan target changed — this session sets the new baseline."]
+          },
+          "fix": "critic-G3",
+          "original": {
+            "policy": "greyskull",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "target changed: off",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5,"weight":60},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"off"}
+          },
+          "expected": {"policy":"off","kind":"off"}
+        },
+        {
+          "name": "target changed: double top moved",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":12},
+                      "sets": [
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true},
+                        {"w":40,"r":12,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":10,"repsMin":8,"weight":40,"prog":"double"}
+          },
+          "expected": {
+            "policy": "double",
+            "kind": "first",
+            "why": ["Plan target changed — this session sets the new baseline."]
+          },
+          "fix": "critic-G3",
+          "original": {
+            "policy": "double",
+            "kind": "up",
+            "weight": 42.5,
+            "reps": 8,
+            "why": ["Top of the rep range in every set — {0} {1} more, back to {2} reps.",2.5,"kg",8]
+          }
+        },
+        {
+          "name": "target changed: bodyweight",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":10},
+                      "sets": [
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true},
+                        {"w":0,"r":10,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":12,"weight":0,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "first",
+            "why": ["Plan target changed — this session sets the new baseline."]
+          },
+          "fix": "critic-G3",
+          "original": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 0,
+            "reps": 11,
+            "why": ["Bodyweight — every rep last time, so go for {0} this time.",11]
+          }
+        },
+        {
+          "name": "target changed: time seconds",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-02-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":2,"sec":45,"mode":"time"},
+                      "sets": [{"sec":45,"w":0,"done":true},{"sec":45,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","mode":"time","sets":2,"sec":60,"prog":"time"}
+          },
+          "expected": {
+            "policy": "time",
+            "kind": "first",
+            "why": ["Plan target changed — this session sets the new baseline."]
+          },
+          "fix": "critic-G3",
+          "original": {
+            "policy": "time",
+            "kind": "up",
+            "sec": 50,
+            "why": ["Held every set for the full time — target up by {0}s.",5]
+          }
+        },
+        {
+          "name": "target without reps never triggers",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "hold",
+            "weight": 60,
+            "why": ["Missed reps last time — same weight again ({0} of {1} to go).",2,3]
+          }
+        },
+        {
+          "name": "target reps as a string never triggers",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":"5"},
+                      "sets": [
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "only the last session counts",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":8},
+                      "sets": [
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":8,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        },
+        {
+          "name": "the last session in another mode does not count",
+          "args": {
+            "state": {
+              "unit": "kg",
+              "workouts": [
+                {
+                  "d": "2026-01-01",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":3,"reps":5},
+                      "sets": [
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true},
+                        {"w":60,"r":5,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "d": "2026-01-02",
+                  "entries": [
+                    {
+                      "id": "0001",
+                      "target": {"sets":1,"sec":30,"mode":"time"},
+                      "sets": [{"sec":30,"w":0,"done":true}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "cfg": {"id":"0001","sets":3,"reps":5,"weight":60,"prog":"linear"}
+          },
+          "expected": {
+            "policy": "linear",
+            "kind": "up",
+            "weight": 62.5,
+            "why": ["Every rep last time — {0} {1} more.",2.5,"kg"]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,666 @@
+{
+  "about": "canonicalPlan + hashPlan (coach.md §7.1, contract §5.4). `plan` is the plan doc; `canonical` is canonicalPlan(plan); `canon` is the string hashPlan iterates over (UTF-16 code units); `hash` is the result. modeOf resolves ids through the library and plan.customEx.",
+  "vectors": [
+    {
+      "name": "coach.test state()",
+      "ref": "coach.md §7.1",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Full body A",
+            "emoji": "💪",
+            "prog": "linear",
+            "ex": [
+              {"id":"0001","sets":3,"reps":10,"mode":"reps","weight":20,"prog":"linear"},
+              {"id":"0007","sets":3,"sec":45,"mode":"time"},
+              {"id":"0009","sets":3,"reps":12,"mode":"reps"}
+            ]
+          },
+          {"id":"r2","name":"Full body B","ex":[{"id":"0002","sets":4,"reps":6,"mode":"reps"}]}
+        ],
+        "week": {"1":"r1","3":"r2","5":"r1"},
+        "customEx": []
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Full body A",
+            "prog": "linear",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 20,
+                "prog": "linear",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0007",
+                "mode": "time",
+                "sets": 3,
+                "reps": 0,
+                "sec": 45,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0009",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 12,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          },
+          {
+            "id": "r2",
+            "name": "Full body B",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0002",
+                "mode": "reps",
+                "sets": 4,
+                "reps": 6,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"1":"r1","3":"r2","5":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"Full body A\",\"linear\",[\"0001:reps:3:10:0:0:0:20:linear:0:0:\",\"0007:time:3:0:45:0:0:0::0:0:\",\"0009:reps:3:12:0:0:0:0::0:0:\"]],[\"r2\",\"Full body B\",\"\",[\"0002:reps:4:6:0:0:0:0::0:0:\"]]],\"week\":[\"1=r1\",\"3=r2\",\"5=r1\"]}",
+      "hash": "f784c8ca82c205eb"
+    },
+    {
+      "name": "state({ week: {} })",
+      "ref": "coach.md §7.1",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Full body A",
+            "emoji": "💪",
+            "prog": "linear",
+            "ex": [
+              {"id":"0001","sets":3,"reps":10,"mode":"reps","weight":20,"prog":"linear"},
+              {"id":"0007","sets":3,"sec":45,"mode":"time"},
+              {"id":"0009","sets":3,"reps":12,"mode":"reps"}
+            ]
+          },
+          {"id":"r2","name":"Full body B","ex":[{"id":"0002","sets":4,"reps":6,"mode":"reps"}]}
+        ],
+        "week": {},
+        "customEx": []
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Full body A",
+            "prog": "linear",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 20,
+                "prog": "linear",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0007",
+                "mode": "time",
+                "sets": 3,
+                "reps": 0,
+                "sec": 45,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0009",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 12,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          },
+          {
+            "id": "r2",
+            "name": "Full body B",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0002",
+                "mode": "reps",
+                "sets": 4,
+                "reps": 6,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"Full body A\",\"linear\",[\"0001:reps:3:10:0:0:0:20:linear:0:0:\",\"0007:time:3:0:45:0:0:0::0:0:\",\"0009:reps:3:12:0:0:0:0::0:0:\"]],[\"r2\",\"Full body B\",\"\",[\"0002:reps:4:6:0:0:0:0::0:0:\"]]],\"week\":[]}",
+      "hash": "d619a67e9451fd3f"
+    },
+    {
+      "name": "state({ routines: [] })",
+      "ref": "coach.md §7.1",
+      "plan": {"routines":[],"week":{"1":"r1","3":"r2","5":"r1"},"customEx":[]},
+      "canonical": {"routines":[],"week":{"1":"r1","3":"r2","5":"r1"}},
+      "canon": "{\"routines\":[],\"week\":[\"1=r1\",\"3=r2\",\"5=r1\"]}",
+      "hash": "14115d860381e569"
+    },
+    {
+      "name": "no plan at all",
+      "ref": "coach.md §7.1",
+      "plan": {},
+      "canonical": {"routines":[],"week":{}},
+      "canon": "{\"routines\":[],\"week\":[]}",
+      "hash": "76c7079ae0cff7e9"
+    },
+    {
+      "name": "one exercise",
+      "ref": "coach.md §7.1",
+      "plan": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10}]}],"week":{"1":"r1"}},
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "A",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"1":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"A\",\"\",[\"0001:reps:3:10:0:0:0:0::0:0:\"]]],\"week\":[\"1=r1\"]}",
+      "hash": "05bc4c803f5a9a39"
+    },
+    {
+      "name": "one exercise, weight 0 ≡ no weight",
+      "ref": "coach.md §7.1",
+      "plan": {
+        "routines": [{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10,"weight":0}]}],
+        "week": {"1":"r1"}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "A",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"1":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"A\",\"\",[\"0001:reps:3:10:0:0:0:0::0:0:\"]]],\"week\":[\"1=r1\"]}",
+      "hash": "05bc4c803f5a9a39"
+    },
+    {
+      "name": "one exercise, sets 4",
+      "ref": "coach.md §7.1",
+      "plan": {"routines":[{"id":"r1","name":"A","ex":[{"id":"0001","sets":4,"reps":10}]}],"week":{"1":"r1"}},
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "A",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 4,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"1":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"A\",\"\",[\"0001:reps:4:10:0:0:0:0::0:0:\"]]],\"week\":[\"1=r1\"]}",
+      "hash": "0ee50bfd7ee8f6a1"
+    },
+    {
+      "name": "non-ASCII name, decimals, superset, cardio, Sunday",
+      "ref": "coach.md §7.1",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Ä ü",
+            "prog": "double",
+            "ex": [
+              {"id":"0001","sets":3,"reps":10,"weight":22.5,"inc":2.5,"repsMin":8,"sg":"a"},
+              {"id":"x","mode":"cardio","sets":1,"min":20,"speed":8.5}
+            ]
+          }
+        ],
+        "week": {"0":"r1","6":"r1"}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Ä ü",
+            "prog": "double",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 22.5,
+                "prog": "",
+                "inc": 2.5,
+                "repsMin": 8,
+                "sg": "a"
+              },
+              {
+                "id": "x",
+                "mode": "cardio",
+                "sets": 1,
+                "reps": 0,
+                "sec": 0,
+                "min": 20,
+                "speed": 8.5,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"0":"r1","6":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"Ä ü\",\"double\",[\"0001:reps:3:10:0:0:0:22.5::2.5:8:a\",\"x:cardio:1:0:0:20:8.5:0::0:0:\"]]],\"week\":[\"0=r1\",\"6=r1\"]}",
+      "hash": "a7c56f988c93f498"
+    },
+    {
+      "name": "custom exercise without mode takes its body part",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Cardio",
+            "ex": [
+              {"id":"cx-run","sets":1,"min":25,"speed":9,"weight":5},
+              {"id":"3220","sets":1,"min":10,"speed":6}
+            ]
+          }
+        ],
+        "week": {"2":"r1"},
+        "customEx": [
+          {"id":"cx-run","n":"sled run","bp":"cardio","desc":"","tg":"","eq":"custom","custom":true}
+        ]
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "Cardio",
+            "prog": "",
+            "ex": [
+              {
+                "id": "cx-run",
+                "mode": "cardio",
+                "sets": 1,
+                "reps": 0,
+                "sec": 0,
+                "min": 25,
+                "speed": 9,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "3220",
+                "mode": "cardio",
+                "sets": 1,
+                "reps": 0,
+                "sec": 0,
+                "min": 10,
+                "speed": 6,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"2":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"Cardio\",\"\",[\"cx-run:cardio:1:0:0:25:9:0::0:0:\",\"3220:cardio:1:0:0:10:6:0::0:0:\"]]],\"week\":[\"2=r1\"]}",
+      "hash": "b52971f4b2925956"
+    },
+    {
+      "name": "week ignores non-weekday keys and empty values",
+      "plan": {
+        "routines": [{"id":"r1","name":"A","ex":[{"id":"0001","sets":3,"reps":10}]}],
+        "week": {"1":"r1","2":"","6":null,"7":"r1","x":"r1"}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "A",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"1":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"A\",\"\",[\"0001:reps:3:10:0:0:0:0::0:0:\"]]],\"week\":[\"1=r1\"]}",
+      "hash": "05bc4c803f5a9a39"
+    },
+    {
+      "name": "JSON escapes and UTF-16 code units",
+      "plan": {
+        "routines": [
+          {
+            "id": "r\"1",
+            "name": "Día \"A\"\\\n\t\u0001 💪",
+            "prog": "linear",
+            "ex": [{"id":"0001","sets":3,"reps":10,"sg":"ß"}]
+          }
+        ],
+        "week": {"4":"r\"1"}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r\"1",
+            "name": "Día \"A\"\\\n\t\u0001 💪",
+            "prog": "linear",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": "ß"
+              }
+            ]
+          }
+        ],
+        "week": {"4":"r\"1"}
+      },
+      "canon": "{\"routines\":[[\"r\\\"1\",\"Día \\\"A\\\"\\\\\\n\\t\\u0001 💪\",\"linear\",[\"0001:reps:3:10:0:0:0:0::0:0:ß\"]]],\"week\":[\"4=r\\\"1\"]}",
+      "hash": "cbff8b3c5d907bf6"
+    },
+    {
+      "name": "numbers join the way JavaScript prints them",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "N",
+            "ex": [
+              {"id":"0001","sets":3,"reps":10,"weight":1e+21,"inc":0.30000000000000004},
+              {"id":"0025","sets":"4","reps":8,"weight":1.5e-7,"inc":100,"repsMin":-1},
+              {"id":"0007","mode":"time","sec":30.5,"sets":2,"weight":12.75,"reps":99}
+            ]
+          }
+        ],
+        "week": {"3":"r1"}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "N",
+            "prog": "",
+            "ex": [
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 10,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 1e+21,
+                "prog": "",
+                "inc": 0.30000000000000004,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0025",
+                "mode": "reps",
+                "sets": "4",
+                "reps": 8,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 1.5e-7,
+                "prog": "",
+                "inc": 100,
+                "repsMin": -1,
+                "sg": ""
+              },
+              {
+                "id": "0007",
+                "mode": "time",
+                "sets": 2,
+                "reps": 0,
+                "sec": 30.5,
+                "min": 0,
+                "speed": 0,
+                "weight": 12.75,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {"3":"r1"}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"N\",\"\",[\"0001:reps:3:10:0:0:0:1e+21::0.30000000000000004:0:\",\"0025:reps:4:8:0:0:0:1.5e-7::100:-1:\",\"0007:time:2:0:30.5:0:0:12.75::0:0:\"]]],\"week\":[\"3=r1\"]}",
+      "hash": "bdbc960e7448ad54"
+    },
+    {
+      "name": "mode wins over body part; cardio drops weight",
+      "plan": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "M",
+            "prog": "off",
+            "ex": [
+              {"id":"3220","mode":"reps","sets":3,"reps":12,"weight":10},
+              {"id":"0001","mode":"cardio","sets":1,"min":15,"speed":7,"weight":10,"reps":5},
+              {"id":"0001","mode":"bogus","sets":2,"sec":40,"reps":6}
+            ]
+          }
+        ],
+        "week": {}
+      },
+      "canonical": {
+        "routines": [
+          {
+            "id": "r1",
+            "name": "M",
+            "prog": "off",
+            "ex": [
+              {
+                "id": "3220",
+                "mode": "reps",
+                "sets": 3,
+                "reps": 12,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 10,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0001",
+                "mode": "cardio",
+                "sets": 1,
+                "reps": 0,
+                "sec": 0,
+                "min": 15,
+                "speed": 7,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              },
+              {
+                "id": "0001",
+                "mode": "reps",
+                "sets": 2,
+                "reps": 6,
+                "sec": 0,
+                "min": 0,
+                "speed": 0,
+                "weight": 0,
+                "prog": "",
+                "inc": 0,
+                "repsMin": 0,
+                "sg": ""
+              }
+            ]
+          }
+        ],
+        "week": {}
+      },
+      "canon": "{\"routines\":[[\"r1\",\"M\",\"off\",[\"3220:reps:3:12:0:0:0:10::0:0:\",\"0001:cardio:1:0:0:15:7:0::0:0:\",\"0001:reps:2:6:0:0:0:0::0:0:\"]]],\"week\":[]}",
+      "hash": "0ac6b3a52dc0b1f0"
+    }
+  ]
+}

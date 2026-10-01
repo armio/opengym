@@ -1,0 +1,716 @@
+{
+  "about": "frontend/src/lib/effort.js (engine.md §6, §10.17, §11) with engine-Q7 windows.",
+  "clock": {"now":1790755200000,"tz":"Europe/Madrid","today":"2026-09-30"},
+  "constants": {"HARD_RIR":3,"MIN_RATED":5,"BUCKETS":4},
+  "groups": {
+    "rirOf": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"{\"rir\":2}","ref":"§10.17","args":{"set":{"rir":2}},"expected":2},
+        {"name":"{\"rpe\":8}","ref":"§10.17","args":{"set":{"rpe":8}},"expected":2},
+        {"name":"{\"rpe\":9.5}","ref":"§10.17","args":{"set":{"rpe":9.5}},"expected":0.5},
+        {"name":"{\"rir\":0}","ref":"§10.17","args":{"set":{"rir":0}},"expected":0},
+        {"name":"{\"rpe\":10}","ref":"§10.17","args":{"set":{"rpe":10}},"expected":0},
+        {"name":"{}","ref":"§10.17","args":{"set":{}},"expected":null},
+        {"name":"{\"rir\":null}","ref":"§10.17","args":{"set":{"rir":null}},"expected":null},
+        {"name":"null","ref":"§10.17","args":{"set":null},"expected":null},
+        {"name":"{\"rir\":3,\"rpe\":9}","ref":"§10.17","args":{"set":{"rir":3,"rpe":9}},"expected":3}
+      ]
+    },
+    "toScale": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"rir 2","ref":"§10.17","args":{"kind":"rir","rir":2},"expected":2},
+        {"name":"rpe 2","ref":"§10.17","args":{"kind":"rpe","rir":2},"expected":8},
+        {"name":"rpe 0","ref":"§10.17","args":{"kind":"rpe","rir":0},"expected":10},
+        {"name":"rir null","ref":"§10.17","args":{"kind":"rir","rir":null},"expected":null},
+        {"name":"rpe 2.5","ref":"§10.17","args":{"kind":"rpe","rir":2.5},"expected":7.5},
+        {
+          "name": "rpe 2.857142857142857",
+          "ref": "§10.17",
+          "args": {"kind":"rpe","rir":2.857142857142857},
+          "expected": 7.1
+        },
+        {
+          "name": "rir 2.857142857142857",
+          "ref": "§10.17",
+          "args": {"kind":"rir","rir":2.857142857142857},
+          "expected": 2.9
+        }
+      ]
+    },
+    "displayScale": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"profile rpe","ref":"§10.17","args":{"state":{"effort":"rpe","workouts":[]}},"expected":"rpe"},
+        {"name":"profile rir","ref":"§10.17","args":{"state":{"effort":"rir","workouts":[]}},"expected":"rir"},
+        {
+          "name": "unrated profile, RPE history",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "effort": "none",
+              "workouts": [
+                {
+                  "id": "w3",
+                  "d": "2026-09-27",
+                  "start": 1790496000000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rpe":8},{"w":60,"r":8,"done":true,"rpe":9}]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": "rpe"
+        },
+        {
+          "name": "unrated profile, RIR history",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "effort": "none",
+              "workouts": [
+                {
+                  "id": "w3",
+                  "d": "2026-09-27",
+                  "start": 1790496000000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rir":2}]}]
+                }
+              ]
+            }
+          },
+          "expected": "rir"
+        },
+        {
+          "name": "unrated profile, no history",
+          "ref": "§10.17",
+          "args": {"state":{"effort":"none","workouts":[]}},
+          "expected": "rir"
+        }
+      ]
+    },
+    "avgRir": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"[{\"rir\":1},{\"rir\":3}]","ref":"§10.17","args":{"sets":[{"rir":1},{"rir":3}]},"expected":2},
+        {
+          "name": "[{\"rir\":1},{},{\"rpe\":7}]",
+          "ref": "§10.17",
+          "args": {"sets":[{"rir":1},{},{"rpe":7}]},
+          "expected": 2
+        },
+        {"name":"[{},{\"rir\":null}]","ref":"§10.17","args":{"sets":[{},{"rir":null}]},"expected":null},
+        {"name":"[]","ref":"§10.17","args":{"sets":[]},"expected":null},
+        {"name":"null","ref":"§10.17","args":{"sets":null},"expected":null}
+      ]
+    },
+    "effortSummary": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "all time",
+          "ref": "§10.17 / §11",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":1},
+                        {"w":60,"r":8,"done":true,"rir":3},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w4",
+                  "d": "2026-09-26",
+                  "start": 1790409600000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":0},
+                        {"w":60,"r":8,"done":true,"rpe":6},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w40",
+                  "d": "2026-08-21",
+                  "start": 1787299200000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":5},{"w":60,"r":8,"done":true,"rir":5}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": {"done":8,"rated":7,"hard":4,"avg":2.857142857142857,"hardPct":0.5714285714285714}
+        },
+        {
+          "name": "one rating is not an average",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":4},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": {"done":6,"rated":1,"hard":0,"avg":null,"hardPct":null}
+        },
+        {
+          "name": "MIN_RATED − 1",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": {"done":4,"rated":4,"hard":4,"avg":null,"hardPct":null}
+        },
+        {
+          "name": "MIN_RATED",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": {"done":5,"rated":5,"hard":5,"avg":2,"hardPct":1}
+        },
+        {
+          "name": "7-day window",
+          "ref": "§10.17 / §11",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":1},
+                        {"w":60,"r":8,"done":true,"rir":3},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w4",
+                  "d": "2026-09-26",
+                  "start": 1790409600000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":0},
+                        {"w":60,"r":8,"done":true,"rpe":6},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w40",
+                  "d": "2026-08-21",
+                  "start": 1787299200000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":5},{"w":60,"r":8,"done":true,"rir":5}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 7
+          },
+          "expected": {"done":6,"rated":5,"hard":4,"avg":2,"hardPct":0.8}
+        },
+        {
+          "name": "3-day window",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":1},
+                        {"w":60,"r":8,"done":true,"rir":3},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w4",
+                  "d": "2026-09-26",
+                  "start": 1790409600000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":0},
+                        {"w":60,"r":8,"done":true,"rpe":6},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w40",
+                  "d": "2026-08-21",
+                  "start": 1787299200000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":5},{"w":60,"r":8,"done":true,"rir":5}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 3
+          },
+          "expected": {"done":3,"rated":3,"hard":3,"avg":null,"hardPct":null}
+        },
+        {
+          "name": "no training",
+          "ref": "§10.17",
+          "args": {"state":{"workouts":[]},"days":30},
+          "expected": {"done":0,"rated":0,"hard":0,"avg":null,"hardPct":null}
+        },
+        {
+          "name": "a date-only workout sits at local noon",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "d2026-09-27",
+                  "d": "2026-09-27",
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":1},{"w":60,"r":8,"done":true,"rir":2}]
+                    }
+                  ]
+                },
+                {
+                  "id": "d2026-09-26",
+                  "d": "2026-09-26",
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rir":4}]}]
+                }
+              ]
+            },
+            "days": 3
+          },
+          "expected": {"done":2,"rated":2,"hard":2,"avg":null,"hardPct":null},
+          "fix": "engine-Q7",
+          "original": {"done":0,"rated":0,"hard":0,"avg":null,"hardPct":null}
+        }
+      ]
+    },
+    "hasEffort": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "RIR 0",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rir":0}]}]
+                }
+              ]
+            }
+          },
+          "expected": true
+        },
+        {
+          "name": "RPE",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rpe":8}]}]
+                }
+              ]
+            }
+          },
+          "expected": true
+        },
+        {
+          "name": "nothing rated",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {"id":"0025","sets":[{"w":60,"r":8,"done":true},{"w":60,"r":8,"done":true,"rir":null}]}
+                  ]
+                }
+              ]
+            }
+          },
+          "expected": false
+        },
+        {"name":"no workouts","ref":"§10.17","args":{"state":{"workouts":[]}},"expected":false},
+        {
+          "name": "rated but unfinished",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":false,"rir":2}]}]
+                }
+              ]
+            }
+          },
+          "expected": false
+        }
+      ]
+    },
+    "effortWeeks": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "one week",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w1",
+                  "d": "2026-09-29",
+                  "start": 1790668800000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":1},
+                        {"w":60,"r":8,"done":true,"rir":3},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": [{"t":1790589600000,"rir":2,"n":2,"sets":3}]
+        },
+        {
+          "name": "a single rated set is dropped",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w1",
+                  "d": "2026-09-29",
+                  "start": 1790668800000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rir":1}]}]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": []
+        },
+        {
+          "name": "oldest first",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":1},{"w":60,"r":8,"done":true,"rir":1}]
+                    }
+                  ]
+                },
+                {
+                  "id": "w30",
+                  "d": "2026-08-31",
+                  "start": 1788163200000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":3},{"w":60,"r":8,"done":true,"rir":3}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": [{"t":1788170400000,"rir":3,"n":2,"sets":2},{"t":1790589600000,"rir":1,"n":2,"sets":2}]
+        },
+        {
+          "name": "windowed with a date-only workout",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "d2026-09-27",
+                  "d": "2026-09-27",
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":1},{"w":60,"r":8,"done":true,"rir":2}]
+                    }
+                  ]
+                },
+                {
+                  "id": "d2026-09-26",
+                  "d": "2026-09-26",
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true,"rir":4}]}]
+                }
+              ]
+            },
+            "days": 3
+          },
+          "expected": [{"t":1789984800000,"rir":1.5,"n":2,"sets":2}],
+          "fix": "engine-Q7",
+          "original": []
+        }
+      ]
+    },
+    "effortHistogram": {
+      "scope": "shared",
+      "vectors": [
+        {
+          "name": "bins and tail",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":0},
+                        {"w":60,"r":8,"done":true,"rir":1.5},
+                        {"w":60,"r":8,"done":true,"rir":4},
+                        {"w":60,"r":8,"done":true,"rir":7}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": [
+            {"rir":0,"tail":false,"n":1,"pct":0.25},
+            {"rir":1,"tail":false,"n":1,"pct":0.25},
+            {"rir":2,"tail":false,"n":0,"pct":0},
+            {"rir":3,"tail":false,"n":0,"pct":0},
+            {"rir":4,"tail":true,"n":2,"pct":0.5}
+          ]
+        },
+        {
+          "name": "nothing rated",
+          "ref": "§10.17",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [{"id":"0025","sets":[{"w":60,"r":8,"done":true}]}]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": [
+            {"rir":0,"tail":false,"n":0,"pct":0},
+            {"rir":1,"tail":false,"n":0,"pct":0},
+            {"rir":2,"tail":false,"n":0,"pct":0},
+            {"rir":3,"tail":false,"n":0,"pct":0},
+            {"rir":4,"tail":true,"n":0,"pct":0}
+          ]
+        },
+        {
+          "name": "fixture st",
+          "ref": "§11",
+          "args": {
+            "state": {
+              "workouts": [
+                {
+                  "id": "w2",
+                  "d": "2026-09-28",
+                  "start": 1790582400000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":1},
+                        {"w":60,"r":8,"done":true,"rir":3},
+                        {"w":60,"r":8,"done":true,"rir":2}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w4",
+                  "d": "2026-09-26",
+                  "start": 1790409600000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [
+                        {"w":60,"r":8,"done":true,"rir":0},
+                        {"w":60,"r":8,"done":true,"rpe":6},
+                        {"w":60,"r":8,"done":true}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "w40",
+                  "d": "2026-08-21",
+                  "start": 1787299200000,
+                  "entries": [
+                    {
+                      "id": "0025",
+                      "sets": [{"w":60,"r":8,"done":true,"rir":5},{"w":60,"r":8,"done":true,"rir":5}]
+                    }
+                  ]
+                }
+              ]
+            },
+            "days": 0
+          },
+          "expected": [
+            {"rir":0,"tail":false,"n":1,"pct":0.14285714285714285},
+            {"rir":1,"tail":false,"n":1,"pct":0.14285714285714285},
+            {"rir":2,"tail":false,"n":1,"pct":0.14285714285714285},
+            {"rir":3,"tail":false,"n":1,"pct":0.14285714285714285},
+            {"rir":4,"tail":true,"n":3,"pct":0.42857142857142855}
+          ]
+        }
+      ]
+    },
+    "isHardSet": {
+      "scope": "shared",
+      "vectors": [
+        {"name":"{\"rir\":3}","ref":"§10.17","args":{"set":{"rir":3}},"expected":true},
+        {"name":"{\"rir\":3.5}","ref":"§10.17","args":{"set":{"rir":3.5}},"expected":false},
+        {"name":"{\"rpe\":10}","ref":"§10.17","args":{"set":{"rpe":10}},"expected":true},
+        {"name":"{}","ref":"§10.17","args":{"set":{}},"expected":false}
+      ]
+    }
+  }
+}
