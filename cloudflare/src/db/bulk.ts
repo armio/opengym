@@ -32,6 +32,8 @@ export interface ImportData {
   workouts: WorkoutItem[]
   bodyweight: BodyweightItem[]
   exWeights: ExWeightItem[]
+  /** Ids/dates a replace import must not tombstone; defaults to the imported rows. */
+  keep?: { workouts: string[]; bodyweight: string[]; exWeights: string[] }
 }
 
 /**
@@ -51,9 +53,9 @@ export async function writeImport(db: D1Database, data: ImportData, mode: 'repla
   const final = [bumpSeq(db)]
   if (mode === 'replace') {
     final.push(
-      tombstoneStatement(db, 'workouts', now, data.workouts.map(w => w.id)),
-      tombstoneStatement(db, 'bodyweight', now, data.bodyweight.map(b => b.d)),
-      tombstoneStatement(db, 'ex_weights', now, data.exWeights.map(x => x.id)),
+      tombstoneStatement(db, 'workouts', now, data.keep?.workouts ?? data.workouts.map(w => w.id)),
+      tombstoneStatement(db, 'bodyweight', now, data.keep?.bodyweight ?? data.bodyweight.map(b => b.d)),
+      tombstoneStatement(db, 'ex_weights', now, data.keep?.exWeights ?? data.exWeights.map(x => x.id)),
       supersedePendingStatement(db),
     )
   }

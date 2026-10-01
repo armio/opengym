@@ -19,6 +19,18 @@ export interface MappedBackup {
   bodyweight: BodyweightItem[]
   exWeights: ExWeightItem[]
   routineCount: number
+  /**
+   * Every workout id, body-weight date and working-weight id the file names, valid or not. A
+   * replace import keeps these on the server: a row skipped as malformed must not be deleted.
+   */
+  keep: { workouts: string[]; bodyweight: string[]; exWeights: string[] }
+  /** How many rows of each kind were skipped as malformed. */
+  skipped: { workouts: number; bodyweight: number; exWeights: number }
+}
+
+function mentioned(list: unknown, key: 'id' | 'd'): string[] {
+  if (!Array.isArray(list)) return []
+  return list.flatMap(entry => (isPlainObject(entry) && typeof entry[key] === 'string' ? [entry[key] as string] : []))
 }
 
 /** True when `state` looks like an openGym `S` (contract §4.4). */
@@ -134,11 +146,25 @@ export function mapOpenGymBackup(state: JsonObject, options: { now: number; time
   const athlete = athleteFrom(state, now)
   if (athlete) docs.push({ key: 'athlete', data: athlete, updatedAt: now })
 
+  const workouts = workoutsFrom(state, catalog, timeZone, now)
+  const bodyweight = bodyweightFrom(state, now)
+  const exWeights = exWeightsFrom(state, now)
+  const keep = {
+    workouts: [...new Set(mentioned(state.workouts, 'id'))],
+    bodyweight: [...new Set(mentioned(state.bodyweight, 'd'))],
+    exWeights: Object.keys(objectOr(state.exWeights)),
+  }
   return {
     docs,
-    workouts: workoutsFrom(state, catalog, timeZone, now),
-    bodyweight: bodyweightFrom(state, now),
-    exWeights: exWeightsFrom(state, now),
+    workouts,
+    bodyweight,
+    exWeights,
     routineCount: routines.length,
+    keep,
+    skipped: {
+      workouts: (state.workouts as unknown[]).length - workouts.length,
+      bodyweight: (Array.isArray(state.bodyweight) ? state.bodyweight.length : 0) - bodyweight.length,
+      exWeights: keep.exWeights.length - exWeights.length,
+    },
   }
 }

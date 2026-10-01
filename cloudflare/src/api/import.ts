@@ -19,5 +19,6 @@ export async function importOpenGym({ request, env, now }: DeviceContext): Promi
   await writeImport(env.DB, backup, mode, now)
   return jsonResponse({
     imported: { workouts: backup.workouts.length, bodyweight: backup.bodyweight.length, routines: backup.routineCount },
+    skipped: backup.skipped,
   })
 }

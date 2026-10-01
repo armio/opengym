@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { clientKey } from '../src/auth/clientKey'
-import { isAllowedConsentHost, isAllowedRegistrationRedirect } from '../src/auth/redirects'
+import { isAllowedRegistrationRedirect } from '../src/auth/redirects'
 import { isIsoDate, isValidTimeZone, localDate, localNoon } from '../src/lib/time'
 
 describe('time', () => {
@@ -52,8 +52,8 @@ describe('redirect allowlists', () => {
     expect(isAllowedRegistrationRedirect('not a url', extra)).toBe(false)
   })
 
-  it('accepts only Claude, loopback and configured hosts on the consent page', () => {
-    for (const host of ['claude.ai', 'claude.com', 'localhost', '127.0.0.1', 'partner.example.com']) expect(isAllowedConsentHost(host, extra)).toBe(true)
-    expect(isAllowedConsentHost('evil.example', extra)).toBe(false)
+  it('rejects other paths on Claude hosts and other loopback paths (the consent page uses the same rule)', () => {
+    expect(isAllowedRegistrationRedirect('https://claude.ai/somewhere/else', extra)).toBe(false)
+    expect(isAllowedRegistrationRedirect('http://localhost:9999/phish', extra)).toBe(false)
   })
 })

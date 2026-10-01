@@ -94,6 +94,13 @@ describe('get_training_review', () => {
     expect(result.isError).toBe(true)
     expect(result.text).toContain('after today')
   })
+
+  it('refuses a window that starts more than 52 weeks back', async () => {
+    const { client, today } = await freshOwner()
+    const result = await client.call('get_training_review', { since: '0100-01-01' })
+    expect(result.isError).toBe(true)
+    expect(result.text).toContain(`use ${daysFrom(today, -364)} or later`)
+  })
 })
 
 /* ------------------------------------------------------------------ the window, with a fixed clock */
@@ -139,6 +146,8 @@ describe('review window', () => {
     expect(windowBounds(owner, [], { since: '2026-09-01' })).toEqual(expect.objectContaining({ from: '2026-09-01', basis: 'since' }))
     expect(windowBounds(owner, [], { weeks: 2 })).toEqual(expect.objectContaining({ from: '2026-09-16', basis: 'weeks' }))
     expect(windowBounds(owner, [], { since: '2026-09-01', weeks: 2 }).basis).toBe('since')
+    // Any other caller is still bounded to a year.
+    expect(windowBounds(owner, [], { since: '0100-01-01' }).from).toBe('2025-10-01')
   })
 
   it('keeps the 60 most recent sessions and starts the window at the oldest one kept', () => {

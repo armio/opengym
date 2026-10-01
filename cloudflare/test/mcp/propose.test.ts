@@ -122,6 +122,25 @@ describe('propose_plan', () => {
     expect((stored!.bundle as any).customEx).toEqual([{ id: 'cx1', n: 'Sandbag carry', bp: 'back', desc: 'Camina con el saco.' }])
   })
 
+  it('refuses custom exercises that would alias one the owner already has (the weight cap would slip)', async () => {
+    await seedDoc('plan', { routines: [], week: {}, customEx: [{ id: 'u123', n: 'Sandbag carry', bp: 'back', desc: '', tg: '', eq: 'custom', custom: true }] })
+    const base = { name: 'Carga', summary: 'Carga.', week: { '2': 'a' } }
+    const sameName = await client.call('propose_plan', {
+      ...base,
+      routines: [{ id: 'a', name: 'Carga', ex: [{ id: 'cx1', sets: 3, reps: 10, weight: 300 }] }],
+      customEx: [{ id: 'cx1', n: 'sandbag carry', bp: 'back' }],
+    })
+    expect(sameName.isError).toBe(true)
+    expect(sameName.text).toContain('already exists as the owner\'s exercise "u123"')
+    const sameId = await client.call('propose_plan', {
+      ...base,
+      routines: [{ id: 'a', name: 'Carga', ex: [{ id: '0025', sets: 3, reps: 5 }] }],
+      customEx: [{ id: '0025', n: 'Mi press', bp: 'chest' }],
+    })
+    expect(sameId.isError).toBe(true)
+    expect(sameId.text).toContain('customEx[0].id "0025" is already an exercise')
+  })
+
   it('refines an earlier plan proposal: iteration + 1, and the new one replaces it', async () => {
     const first = await client.ok('propose_plan', BUNDLE)
     const second = await client.ok('propose_plan', { ...BUNDLE, summary: 'Cambio: menos series de peso muerto.', refines: first.proposalId })

@@ -158,6 +158,15 @@ describe('POST /api/proposals/:id/resolve', () => {
     expect((await getProposal(env.DB, proposal.id))?.status).toBe('pending')
   })
 
+  it('refuses a proposal past its expiry even before the cron flipped it, and expires it', async () => {
+    const created = Date.now() - 15 * 24 * 3600 * 1000
+    const proposal = await createProposal(env.DB, { kind: 'nochange', summary: 'Vieja', body: { reading: 'x' } }, created)
+    const result = await api(`/api/proposals/${proposal.id}/resolve`, { token, body: { outcome: 'dismissed', accepted: [], rejected: [], stale: [], docs: [] } })
+    expect(result.status).toBe(409)
+    expect(result.body.proposal.status).toBe('expired')
+    expect((await getProposal(env.DB, proposal.id))?.status).toBe('expired')
+  })
+
   it('validates the request', async () => {
     const proposal = await createProposal(env.DB, { kind: 'plan', summary: 'x', body: { bundle: {} } })
     const url = `/api/proposals/${proposal.id}/resolve`

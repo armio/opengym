@@ -1,12 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import * as z from 'zod'
 import { listBodyweight, listWorkouts } from '../../db'
-import { sortWorkouts } from '../../engine'
+import { addDays, sortWorkouts } from '../../engine'
 import { loadOwner, loadRecentProposals, loadTraining, toLoggedWorkout } from '../owner'
 import { BODYWEIGHT_DEFAULT_DAYS, buildBodyWeight, toWeighIns } from '../payloads/bodyweight'
 import { buildExerciseHistory, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT } from '../payloads/exerciseHistory'
 import { buildOverview } from '../payloads/overview'
-import { buildTrainingReview, REVIEW_DEFAULT_WEEKS, REVIEW_MAX_SESSIONS } from '../payloads/review'
+import { buildTrainingReview, REVIEW_DEFAULT_WEEKS, REVIEW_MAX_SESSIONS, REVIEW_MAX_WEEKS } from '../payloads/review'
 import { errorResult, jsonResult } from '../results'
 import { exerciseId, isoDate } from '../schemas'
 import { workoutDetail, workoutSummary } from '../views/workouts'
@@ -52,7 +52,7 @@ export function registerTrainingTools(server: McpServer, db: D1Database): void {
 - aggregates.setsByBodyPart, setsByMuscle (effective sets), untrainedMuscles, medianSessionMin, hardSetShare (share of rated sets at RIR ≤ 3) and effort.
 - bodyweight: entries in the window, goal and weekly averages.`,
       inputSchema: z.object({
-        since: isoDate.optional().describe('First date of the window, YYYY-MM-DD in the owner\'s time zone. Omit for the default window.'),
+        since: isoDate.optional().describe('First date of the window, YYYY-MM-DD in the owner\'s time zone, at most 52 weeks back. Omit for the default window.'),
         weeks: z.number().int().min(1).max(52).optional().describe('The last N weeks instead (1–52). Ignored when since is given.'),
       }),
       annotations: READ_ONLY,
@@ -60,6 +60,8 @@ export function registerTrainingTools(server: McpServer, db: D1Database): void {
     async ({ since, weeks }) => {
       const owner = await loadOwner(db)
       if (since && since > owner.today) return errorResult(`since (${since}) is after today (${owner.today}).`)
+      const earliest = addDays(owner.today, -7 * REVIEW_MAX_WEEKS)
+      if (since && since < earliest) return errorResult(`since (${since}) is more than ${REVIEW_MAX_WEEKS} weeks back; use ${earliest} or later.`)
       const [training, bodyweight, proposals] = await Promise.all([loadTraining(db, owner), listBodyweight(db), loadRecentProposals(db)])
       return jsonResult(buildTrainingReview({ owner, training, bodyweight: toWeighIns(bodyweight), proposals, request: { since, weeks } }))
     },

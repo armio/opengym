@@ -16,7 +16,7 @@ describe('POST /api/import/opengym (replace)', () => {
   it('maps a realistic openGym backup onto docs and rows', async () => {
     const result = await importState(sampleOpenGymState())
     expect(result.status).toBe(200)
-    expect(result.body).toEqual({ imported: { workouts: 2, bodyweight: 2, routines: 2 } })
+    expect(result.body).toEqual({ imported: { workouts: 2, bodyweight: 2, routines: 2 }, skipped: { workouts: 0, bodyweight: 0, exWeights: 0 } })
 
     const docs = await getDocs(env.DB)
     expect(docs.settings.data).toEqual({
@@ -83,6 +83,16 @@ describe('POST /api/import/opengym (replace)', () => {
     // The deletions reach other devices through a pull.
     const pulled = await api('/api/sync?since=0', { token })
     expect(pulled.body.workouts.find((w: any) => w.id === 'old-workout')).toEqual(expect.objectContaining({ deleted: true, data: null }))
+  })
+
+  it('keeps server rows a replace import skipped as malformed, and reports them', async () => {
+    await seedWorkouts([sampleWorkout('w-keep', '2026-09-20')])
+    const state = sampleOpenGymState() as any
+    state.workouts = [...state.workouts, { ...(sampleWorkout('w-keep', '2026-09-20').data as object), id: 'w-keep', d: '2026-09-20T18:07:00' }]
+    const result = await importState(state)
+    expect(result.body.skipped).toEqual({ workouts: 1, bodyweight: 0, exWeights: 0 })
+    const row = await env.DB.prepare('SELECT deleted FROM workouts WHERE id = ?').bind('w-keep').first<{ deleted: number }>()
+    expect(row?.deleted).toBe(0)
   })
 
   it('is idempotent', async () => {

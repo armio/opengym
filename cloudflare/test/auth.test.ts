@@ -1,6 +1,7 @@
 import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
 import { env } from 'cloudflare:workers'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { AUTH_LIMITS } from '../src/db/authFailures'
 import worker from '../src/index'
 import { APP_ORIGIN, ORIGIN, PASSWORD, api, fetchWorker, loginDevice, resetDatabase } from './helpers'
 
@@ -66,10 +67,21 @@ describe('POST /api/auth/login', () => {
     expect(sameSubnet.status).toBe(429)
   })
 
-  it('applies the global limit of 200 attempts per hour', async () => {
+  it('applies the global limit across client keys', async () => {
     const now = Date.now()
-    await env.DB.batch(Array.from({ length: 200 }, (_, i) => env.DB.prepare('INSERT INTO auth_failures (ip, at) VALUES (?, ?)').bind(`10.0.${i >> 8}.${i & 255}`, now)))
+    const keys = AUTH_LIMITS.global
+    await env.DB.batch(
+      Array.from({ length: keys }, (_, i) => env.DB.prepare('INSERT INTO auth_failures (ip, at) VALUES (?, ?)').bind(`10.${i >> 16}.${(i >> 8) & 255}.${i & 255}`, now)),
+    )
     expect((await api('/api/auth/login', { body: { password: PASSWORD }, headers: { 'CF-Connecting-IP': '192.0.2.50' } })).status).toBe(429)
+  })
+
+  it('does not record attempts over a key\'s own limit, so one client cannot lock everyone out', async () => {
+    const attacker = { 'CF-Connecting-IP': '198.51.100.7' }
+    for (let i = 0; i < 30; i++) await api('/api/auth/login', { body: { password: 'wrong password!!' }, headers: attacker })
+    const { n } = (await env.DB.prepare('SELECT count(*) AS n FROM auth_failures').first<{ n: number }>())!
+    expect(n).toBe(AUTH_LIMITS.perKey)
+    expect((await api('/api/auth/login', { body: { password: PASSWORD }, headers: { 'CF-Connecting-IP': '203.0.113.20' } })).status).toBe(200)
   })
 
   it('does not count successful logins', async () => {

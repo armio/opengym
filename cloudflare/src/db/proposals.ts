@@ -294,6 +294,13 @@ export async function resolveProposal(db: D1Database, id: string, input: Resolve
   }
   const existing = await getProposal(db, id)
   if (!existing) return { status: 'not-found' }
+  if (existing.status === 'pending' && existing.expiresAt < now) {
+    // Overdue but not yet flipped (no sync or cron since): expire it now so the app and Claude
+    // agree, and refuse the decision like any other non-pending proposal.
+    await db.batch([bumpSeqIfProposalsExpire(db, now), expireProposalsStatement(db, now)])
+    const expired = await getProposal(db, id)
+    return expired ? settle(expired) : { status: 'not-found' }
+  }
   if (existing.status !== 'pending') return settle(existing)
 
   const resolution: Resolution = {
@@ -306,7 +313,12 @@ export async function resolveProposal(db: D1Database, id: string, input: Resolve
   const update = db
     .prepare(`UPDATE proposals SET status = ?, resolution = ?, resolved_at = ?, seq = ${SEQ} WHERE id = ?`)
     .bind(input.outcome, JSON.stringify(resolution), now, id)
-  const commit = await commitWithDocs(db, id, ["(SELECT status FROM proposals WHERE id = ?) IS NOT 'pending'", id], update, input.docs)
+  const pendingGuard: [string, ...unknown[]] = [
+    "(SELECT status = 'pending' AND expires_at >= ? FROM proposals WHERE id = ?) IS NOT 1",
+    now,
+    id,
+  ]
+  const commit = await commitWithDocs(db, id, pendingGuard, update, input.docs)
   if (commit.committed) return { status: 'ok', proposal: commit.proposal, docs: commit.docs }
   return commit.proposal ? settle(commit.proposal) : { status: 'not-found' }
 }

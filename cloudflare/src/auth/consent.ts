@@ -3,7 +3,7 @@ import { clearAuthAttempt, recordAuthAttempt } from '../db/authFailures'
 import { clientKey } from './clientKey'
 import { renderConsentPage, renderMessagePage } from './consentPage'
 import { isOwnerPassword, MISCONFIGURED_PASSWORD_MESSAGE, ownerPasswordConfigured } from './password'
-import { extraRedirectHosts, isAllowedConsentHost } from './redirects'
+import { extraRedirectHosts, isAllowedRegistrationRedirect } from './redirects'
 
 /** The single subject every grant is issued to; tools never read it (contract §5). */
 export const OWNER_USER_ID = 'owner'
@@ -48,9 +48,16 @@ function consentPage(status: number, details: ConsentDescription, handle: string
 
 const restart = 'Vuelve a conectar openGym desde Claude para empezar de nuevo.'
 
-/** Maps the library's expected failures to a local page or, when it is safe, a redirect (docs/consent-page.md). */
-function authorizationFailure(error: unknown): Response {
-  if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302)
+/**
+ * Maps the library's expected failures to a local page or, when it is safe, a redirect
+ * (docs/consent-page.md). Only allowlisted redirect URIs are followed: a client identified by a
+ * metadata document (CIMD) never passes through the registration allowlist, so without this check
+ * /authorize would bounce anyone to a URI of the attacker's choosing.
+ */
+function authorizationFailure(error: unknown, env: Env): Response {
+  if (error instanceof AuthorizationError && error.redirectTo && error.redirectUri && isAllowedRegistrationRedirect(error.redirectUri, extraRedirectHosts(env))) {
+    return Response.redirect(error.redirectTo, 302)
+  }
   if (error instanceof AuthorizationError) return messagePage(400, 'No se puede autorizar', `${error.description}. ${restart}`)
   if (error instanceof CimdFetchError) return messagePage(400, 'No se puede autorizar', 'No se pudo verificar esta aplicación.')
   throw error
@@ -58,7 +65,9 @@ function authorizationFailure(error: unknown): Response {
 
 async function describeAllowed(env: Env, authRequest: AuthRequest): Promise<ConsentDescription | Response> {
   const details = await env.OAUTH_PROVIDER.describeConsent(authRequest)
-  if (!isAllowedConsentHost(details.redirectHost, extraRedirectHosts(env))) {
+  // The full URI, not just the host: CIMD clients skip the registration allowlist, so this is
+  // where their redirect is held to the same rule (Claude's exact callbacks, loopback /callback).
+  if (!isAllowedRegistrationRedirect(details.redirectUri, extraRedirectHosts(env))) {
     return messagePage(403, 'Destino no permitido', `openGym no envía accesos a ${details.redirectHost}.`)
   }
   return details
@@ -122,7 +131,7 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
     if (request.method === 'GET') return await showConsent(request, env)
     if (request.method === 'POST') return await submitConsent(request, env, Date.now())
   } catch (error) {
-    return authorizationFailure(error)
+    return authorizationFailure(error, env)
   }
   return new Response(null, { status: 405, headers: { Allow: 'GET, POST' } })
 }

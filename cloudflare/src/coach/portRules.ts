@@ -102,6 +102,33 @@ export function equipmentWarnings(ids: Iterable<string>, catalog: Catalog, equip
 
 export type PlanProposalResult = Result<{ bundle: PlanBundle; warnings: string[] }>
 
+/**
+ * A plan may define new custom exercises, but not re-define existing ones. Accepting a plan maps a
+ * proposed custom onto an owner's exercise with the same name (case-insensitive) and body part
+ * (`mergePlan`), after the server has capped weights under the proposal's own id; re-using an id
+ * would likewise alias an existing exercise. Either way a starting weight would slip past the
+ * working-weight cap (coach-Q17), so both are rejected with the id to use instead.
+ */
+function checkProposedCustoms(input: unknown, catalog: Catalog): string[] {
+  const proposed = (input as { customEx?: unknown } | null)?.customEx
+  if (!Array.isArray(proposed)) return []
+  const owned = catalog.exercises.filter(exercise => exercise.custom)
+  const errors: string[] = []
+  proposed.forEach((raw, i) => {
+    if (!raw || typeof raw !== 'object') return
+    const { id, n, bp } = raw as { id?: unknown; n?: unknown; bp?: unknown }
+    if (typeof id === 'string' && catalog.has(id)) {
+      errors.push(`customEx[${i}].id "${id}" is already an exercise — reference it from the routine instead of redefining it`)
+      return
+    }
+    if (typeof n !== 'string') return
+    const name = n.trim().toLowerCase()
+    const same = owned.find(exercise => exercise.name.trim().toLowerCase() === name && exercise.bodyPart === bp)
+    if (same) errors.push(`customEx[${i}] "${n}" already exists as the owner's exercise "${same.id}" — use that id instead`)
+  })
+  return errors
+}
+
 /** `propose_plan`: the original rules plus contract §5.3, against the owner's catalogue and profile. */
 export function validatePlanProposal(input: unknown, context: PortContext): PlanProposalResult {
   const dialect: Dialect = {
@@ -119,6 +146,8 @@ export function validatePlanProposal(input: unknown, context: PortContext): Plan
     },
   }
   const { athlete } = context
+  const redefined = checkProposedCustoms(input, context.catalog)
+  if (redefined.length) return { ok: false, errors: redefined }
   const result = validatePlan(input, {
     workingWeights: context.workingWeights ?? [],
     daysPerWeek: athlete.savedAt != null ? athlete.daysPerWeek : undefined,

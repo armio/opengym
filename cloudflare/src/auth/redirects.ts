@@ -29,9 +29,3 @@ export function isAllowedRegistrationRedirect(uri: string, extraHosts: ReadonlyS
   if (url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname)) return url.pathname === '/callback' && url.search === ''
   return url.protocol === 'https:' && extraHosts.has(url.hostname)
 }
-
-/** Whether the consent page may send an authorization to `host` (the redirect URI's hostname). */
-export function isAllowedConsentHost(host: string, extraHosts: ReadonlySet<string>): boolean {
-  const normalized = host.toLowerCase()
-  return CLAUDE_HOSTS.has(normalized) || LOOPBACK_HOSTS.has(normalized) || extraHosts.has(normalized)
-}

@@ -17,6 +17,8 @@ import { goalWeight, weeklyAverages, type WeighIn } from './bodyweight'
  */
 
 export const REVIEW_DEFAULT_WEEKS = 12
+/** The longest window a review may cover (the `weeks` maximum, and the earliest `since`). */
+export const REVIEW_MAX_WEEKS = 52
 export const REVIEW_MAX_SESSIONS = 60
 
 export interface ReviewRequest {
@@ -50,7 +52,10 @@ export function windowBounds(owner: Owner, proposals: readonly ProposalDTO[], re
   const to = owner.today
   const reviewedAt = lastReviewAt(proposals)
   const lastReview = reviewedAt ? localDate(reviewedAt, owner.clock.tz) : null
-  if (request.since) return { from: request.since, to, basis: 'since', lastReview }
+  // Never more than a year: every day in the window is walked for adherence (the tool rejects
+  // older dates; this keeps the builder bounded for any other caller).
+  const earliest = addDays(to, -7 * REVIEW_MAX_WEEKS)
+  if (request.since) return { from: request.since < earliest ? earliest : request.since, to, basis: 'since', lastReview }
   if (request.weeks) return { from: addDays(to, -7 * request.weeks), to, basis: 'weeks', lastReview }
   const cutoff = addDays(to, -7 * REVIEW_DEFAULT_WEEKS)
   if (lastReview && lastReview > cutoff) return { from: lastReview, to, basis: 'since-last-review', lastReview }
