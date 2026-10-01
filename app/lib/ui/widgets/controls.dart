@@ -459,8 +459,12 @@ class RoundCheck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    // Its own node: without `container` the check merges into a neighbouring text node (e.g. the
+    // SelectableText of a Claude change card) and stops being reachable as a checkbox.
     return Semantics(
+      container: true,
       checked: value,
+      enabled: onChanged != null,
       label: semanticLabel,
       child: Pressable(
         onTap: onChanged == null ? null : () => onChanged!(!value),
