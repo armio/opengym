@@ -26,10 +26,16 @@ La arquitectura completa y el contrato entre las piezas están en
 |---|---|---|
 | Base de datos D1 | `opengym-db` (región ENAM) | `f73efbb2-707b-4ac3-8c8a-fc8213a47d58` |
 | Namespace KV (tokens OAuth) | `opengym-oauth` | `00a254cab3df42978057216199e0652b` |
+| Worker | `opengym`, en el dominio propio `gym.armio.cc` | — |
+| Secreto del Worker | `OWNER_PASSWORD` | — |
+| Token de API (cuenta) | `opengym-deploy` | `4677a963ce20c822f53ba368dc56c769` |
 
 El esquema (`cloudflare/migrations/0001_init.sql`) ya está aplicado en `opengym-db` y registrado
 como migración, así que `wrangler d1 migrations apply` no lo repetirá. `cloudflare/wrangler.jsonc`
 ya apunta a estos recursos y al dominio `gym.armio.cc`.
+
+El Worker ya está desplegado en `https://gym.armio.cc` y la prueba de humo pasa. Lo que sigue solo
+hace falta para volver a desplegar (por ejemplo, después de cambiar el código).
 
 ### Desplegar
 
@@ -56,6 +62,37 @@ O todo en un paso, sin `wrangler login`, con un token de API de Cloudflare. El t
 export CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… OPENGYM_OWNER_PASSWORD=…
 scripts/deploy.sh    # migraciones, deploy, secreto OWNER_PASSWORD y prueba de humo
 ```
+
+#### Crear el token con la CLI `cf`
+
+El token `opengym-deploy` se creó así, con la CLI oficial de Cloudflare
+([`cf`](https://github.com/cloudflare/cf)). Es un token **de la cuenta**, sin caducidad, y solo
+tiene Workers Scripts Write, Workers Tail Read y D1 Write en la cuenta, y Workers Routes Write en
+la zona `armio.cc`:
+
+```sh
+npx cf auth login                       # código de dispositivo: se aprueba en el navegador
+cat > policies.json <<'EOF'
+[
+  { "effect": "allow",
+    "resources": { "com.cloudflare.api.account.<ACCOUNT_ID>": "*" },
+    "permission_groups": [
+      { "id": "e086da7e2179491d91ee5f35b3ca210a" },
+      { "id": "05880cd1bdc24d8bae0be2136972816b" },
+      { "id": "09b2857d1c31407795e75e3fed8617a1" } ] },
+  { "effect": "allow",
+    "resources": { "com.cloudflare.api.account.zone.<ZONE_ID de armio.cc>": "*" },
+    "permission_groups": [ { "id": "28f4b596e7d643029c524985477ae49a" } ] }
+]
+EOF
+npx cf accounts tokens create --name opengym-deploy --policies @policies.json
+npx cf auth logout
+```
+
+Los ids de los permisos salen de `npx cf accounts tokens permission-groups list`, y los de la zona
+de `npx cf zones list`. El valor del token solo se muestra al crearlo: guárdalo (por ejemplo, como
+secreto `CLOUDFLARE_API_TOKEN` de GitHub si quieres desplegar desde CI). Para revocarlo, ve al
+panel de Cloudflare → *Manage account* → *Account API tokens*.
 
 Comprueba que todo funciona (solo lectura, seguro en producción):
 
