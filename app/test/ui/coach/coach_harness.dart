@@ -270,7 +270,10 @@ Future<void> pumpCoach(WidgetTester tester, CoachHarness harness, {double height
         ChangeNotifierProvider<AppState>.value(value: harness.app),
         ChangeNotifierProvider<ShellController>.value(value: harness.shell),
       ],
-      child: MaterialApp(theme: AppTheme.build(brightness: Brightness.dark), home: const CoachScreen()),
+      child: MaterialApp(
+        theme: AppTheme.build(brightness: Brightness.dark),
+        home: const CoachScreen(),
+      ),
     ),
   );
   await tester.pumpAndSettle();

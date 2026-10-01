@@ -23,6 +23,9 @@ Future<bool> confirmUploadLocalOnly(BuildContext context, LocalOnlyData localOnl
         'Si no los subes, se borrarán de este dispositivo.',
     confirmText: 'Subir',
     cancelText: 'Descartar',
+    // Discarding deletes rows that exist nowhere else: only an explicit tap may choose it, never
+    // a stray tap on the backdrop or a back gesture.
+    locked: true,
   );
 }
 

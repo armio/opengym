@@ -27,6 +27,17 @@ class DocConflictNotice extends SyncNotice {
   String get message => 'Se descartó un cambio sin sincronizar: ${key.labelEs} cambió en otro dispositivo.';
 }
 
+/// A local edit to [key] made while a proposal resolution or revert was in flight was replaced by
+/// the version the server committed.
+class DraftOverwrittenNotice extends SyncNotice {
+  const DraftOverwrittenNotice(this.key);
+
+  final DocKey key;
+
+  @override
+  String get message => 'Se descartó un cambio en ${key.labelEs} hecho mientras se aplicaba la propuesta de Claude.';
+}
+
 /// The server refused some pushed items; they stay only on this device.
 class RejectedNotice extends SyncNotice {
   const RejectedNotice(this.items);
@@ -213,6 +224,9 @@ class SyncService {
     data.epoch = res.epoch;
     data.lastSeq = 0;
     data.markAllDirty();
+    // Proposals live only on the server: the new database re-sends the ones it has, and stale
+    // ones would otherwise sit "pending" here and answer 404 when acted on.
+    data.proposals.clear();
     for (final k in DocKey.values) {
       // Untouched defaults have nothing to say to the new database.
       if (data.docs[k]!.updatedAt == 0) data.dirtyDocs.remove(k);
@@ -241,7 +255,9 @@ class SyncService {
       final local = data.docs[key]!;
       final sentAt = batch.sentDocs[key];
       if (sentAt == null) {
-        if (!data.dirtyDocs.contains(key)) _adoptDoc(key, sd);
+        // Never step back: a slow pull answered before a resolve/revert committed a newer version
+        // must not roll the doc back to an older seq.
+        if (!data.dirtyDocs.contains(key) && sd.seq >= local.baseSeq) _adoptDoc(key, sd);
         continue;
       }
       if (rejected[ItemKind.doc]?.contains(sd.key) ?? false) continue;
@@ -400,7 +416,7 @@ class SyncService {
         final key = DocKey.fromWire(sd.key);
         if (key == null) continue;
         seenDocs.add(key);
-        if (!data.dirtyDocs.contains(key)) _adoptDoc(key, sd);
+        if (!data.dirtyDocs.contains(key) && sd.seq >= data.docs[key]!.baseSeq) _adoptDoc(key, sd);
       }
       _applyRows<Workout, ServerWorkout>(
         rows: res.workouts,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:opengym/data/local_data.dart';
 import 'package:opengym/data/local_store.dart';
 import 'package:opengym/data/models/models.dart';
 import 'package:opengym/data/session_store.dart';
+import 'package:opengym/data/sync.dart';
 import 'package:opengym/data/sync_protocol.dart';
 
 import 'fake_server.dart';
@@ -352,6 +354,35 @@ void main() {
       expect(app.proposalById('p1')!.status, 'applied');
       await app.flush();
       expect(dataOf(app).docs[DocKey.coach]!.baseSeq, 12);
+    });
+
+    test('a plan edit made while a resolve is in flight is replaced by the commit, with a notice', () async {
+      final notices = <SyncNotice>[];
+      final sub = app.notices.listen(notices.add);
+      final release = Completer<void>();
+      handlers['POST /api/proposals/p1/resolve'] = (r) async {
+        await release.future;
+        return http.Response(
+          jsonEncode({
+            'proposal': {...pending().toJson(), 'status': 'applied'},
+            'docs': [
+              {'key': 'plan', 'data': jsonDecode(r.body)['docs'][0]['data'], 'updatedAt': 77, 'seq': 12},
+            ],
+          }),
+          200,
+        );
+      };
+      final draft = app.beginProposalDraft()..plan.week['1'] = 'from-claude';
+      final resolving = app.resolveProposal(pending(), outcome: 'applied', accepted: ['c1'], draft: draft);
+      await Future<void>.delayed(Duration.zero);
+      app.updatePlan((p) => p.week['3'] = 'edited-meanwhile');
+      release.complete();
+      await resolving;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(app.plan.week, {'1': 'from-claude'});
+      expect(notices.whereType<DraftOverwrittenNotice>().single.key, DocKey.plan);
+      await sub.cancel();
     });
 
     test('accepting a proposal written for another unit is refused locally', () async {

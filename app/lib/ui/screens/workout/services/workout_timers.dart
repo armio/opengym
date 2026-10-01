@@ -164,7 +164,7 @@ class WorkoutTimers extends ChangeNotifier {
       if (left != r.left) {
         changed = true;
         if (left <= 0) {
-          _restOver();
+          _restOver(lateMs: now - r.endsAt);
         } else {
           if (left <= 3 && _isForeground()) feedback.countdown();
           _rest = r.copyWith(left: left);
@@ -192,11 +192,16 @@ class WorkoutTimers extends ChangeNotifier {
 
   static int _leftAt(Countdown c, int now) => math.max(0, ((c.endsAt - now) / 1000).round());
 
-  void _restOver() {
+  /// How late a rest may end and still beep: later than this it ended while the app was
+  /// suspended, the scheduled notification already told the owner, and a beep now would be stale.
+  static const lateRestMs = 2000;
+
+  void _restOver({int lateMs = 0}) {
     _rest = null;
     // In the background the scheduled notification is what tells the owner; keep it.
     if (!_isForeground()) return;
     unawaited(alerts.cancel());
+    if (lateMs > lateRestMs) return;
     feedback.timerOver();
     onRestOver?.call();
   }

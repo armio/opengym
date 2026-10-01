@@ -54,6 +54,7 @@ class ProposalDraft {
       coach = (coach.data as CoachDoc).copy(),
       planBaseSeq = plan.baseSeq,
       coachBaseSeq = coach.baseSeq,
+      _updatedAt = {DocKey.plan: plan.updatedAt, DocKey.coach: coach.updatedAt},
       _planBefore = plan.data.toJson(),
       _coachBefore = coach.data.toJson();
 
@@ -61,6 +62,10 @@ class ProposalDraft {
   final CoachDoc coach;
   final int planBaseSeq;
   final int coachBaseSeq;
+
+  /// The local `updatedAt` of each doc when the draft was taken: a doc whose stamp moved by the
+  /// time the server answers was edited while the request was in flight.
+  final Map<DocKey, int> _updatedAt;
   final JsonMap _planBefore;
   final JsonMap _coachBefore;
 
@@ -490,7 +495,7 @@ class AppState extends ChangeNotifier {
       'schedule': ?schedule,
       'docs': draft == null ? const [] : _draftDocs(draft, onlyChanged: true),
     };
-    return _proposalWrite(proposal, () => _requireApi().resolveProposal(proposal.id, body));
+    return _proposalWrite(proposal, () => _requireApi().resolveProposal(proposal.id, body), draft: draft);
   }
 
   /// Reverts an applied proposal: [draft] holds the restored plan and the coach doc with the
@@ -499,6 +504,7 @@ class AppState extends ChangeNotifier {
   Future<Proposal> revertProposal(Proposal proposal, ProposalDraft draft) => _proposalWrite(
     proposal,
     () => _requireApi().revertProposal(proposal.id, {'docs': _draftDocs(draft, onlyChanged: false)}),
+    draft: draft,
   );
 
   List<JsonMap> _draftDocs(ProposalDraft draft, {required bool onlyChanged}) => [
@@ -508,12 +514,22 @@ class AppState extends ChangeNotifier {
       {'key': DocKey.coach.wire, 'data': draft.coach.toJson(), 'baseSeq': draft.coachBaseSeq},
   ];
 
-  Future<Proposal> _proposalWrite(Proposal proposal, Future<ProposalWriteResult> Function() call) async {
+  Future<Proposal> _proposalWrite(
+    Proposal proposal,
+    Future<ProposalWriteResult> Function() call, {
+    ProposalDraft? draft,
+  }) async {
     try {
       final result = await call();
       for (final sd in result.docs) {
         final key = DocKey.fromWire(sd.key);
         if (key == null) continue;
+        // The server committed the draft; an edit made locally meanwhile (the tabs stay usable
+        // while the request runs) was based on the old doc and is replaced — say so.
+        final takenAt = draft?._updatedAt[key];
+        if (takenAt != null && _data.docs[key]!.updatedAt != takenAt && !_notices.isClosed) {
+          _notices.add(DraftOverwrittenNotice(key));
+        }
         _data.docs[key] = DocRecord(data: key.parse(sd.data), baseSeq: sd.seq, updatedAt: sd.updatedAt);
         _data.dirtyDocs.remove(key);
       }
@@ -712,6 +728,14 @@ class AppState extends ChangeNotifier {
   Future<void> _runSync({ConfirmUpload? confirmUpload, void Function(SyncProgress)? onProgress}) async {
     final service = _syncService;
     if (service == null || _disposed) return;
+    if (service.isRunning && !_data.needsInitialSync) {
+      // Joins the run in flight (and asks it for one more pass); the caller that started it
+      // reports notices and failures, so they are not toasted or counted twice.
+      try {
+        await service.sync();
+      } catch (_) {}
+      return;
+    }
     _syncTimer?.cancel();
     _retryTimer?.cancel();
     _setStatus(SyncStatus.syncing, _lastSyncError);

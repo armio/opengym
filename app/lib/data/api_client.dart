@@ -218,11 +218,21 @@ class ApiClient implements SyncApi {
 
   @override
   Future<SyncResponse> pull(int since) async =>
-      SyncResponse.fromJson(await _send('GET', '/api/sync?since=$since', timeout: const Duration(seconds: 60)));
+      _syncResponse(await _send('GET', '/api/sync?since=$since', timeout: const Duration(seconds: 60)));
 
   @override
   Future<SyncResponse> push(JsonMap body) async =>
-      SyncResponse.fromJson(await _send('POST', '/api/sync', body: body, timeout: const Duration(seconds: 60)));
+      _syncResponse(await _send('POST', '/api/sync', body: body, timeout: const Duration(seconds: 60)));
+
+  /// A 2xx sync answer must carry the Worker's counters. Anything else (an HTML login page from an
+  /// access proxy, a captive portal, an empty body) is a server error, never a response: read as
+  /// `seq 0, epoch 0` it would look like a restored database and discard unsynced doc edits.
+  static SyncResponse _syncResponse(Object? body) {
+    if (body is! Map || body['seq'] is! int || body['epoch'] is! int) {
+      throw const ServerException('Respuesta inesperada del servidor de sincronización.', 200);
+    }
+    return SyncResponse.fromJson(body);
+  }
 
   /// `POST /api/proposals/:id/resolve` (contract §4.3).
   Future<ProposalWriteResult> resolveProposal(String id, JsonMap body) async => ProposalWriteResult.fromJson(

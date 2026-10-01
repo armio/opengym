@@ -372,6 +372,45 @@ void main() {
     expect(syncBackoff(5), const Duration(seconds: 32));
     expect(syncBackoff(20), const Duration(minutes: 5));
   });
+  test('a pull answered before a newer commit never rolls a doc back to an older seq', () async {
+    server.putDoc('plan', {
+      'routines': [],
+      'week': {'1': 'old'},
+      'customEx': [],
+    });
+    await sync.sync();
+    final oldSeq = data.docs[DocKey.plan]!.baseSeq;
+    // A resolve committed a newer plan (seq above the one a slow pull is about to deliver).
+    data.docs[DocKey.plan]!
+      ..data = PlanDoc.fromJson({
+        'routines': [],
+        'week': {'1': 'new'},
+        'customEx': [],
+      })
+      ..baseSeq = oldSeq + 5;
+    data.lastSeq = 0; // the slow pull re-delivers the old version
+    await sync.sync();
+    expect(planOf(data).week, {'1': 'new'});
+    expect(data.docs[DocKey.plan]!.baseSeq, oldSeq + 5);
+  });
+
+  test('a new database clears proposals it no longer has', () async {
+    server.putProposal({
+      'id': 'pgone',
+      'kind': 'nochange',
+      'status': 'pending',
+      'createdAt': 1,
+      'expiresAt': 2,
+      'unit': 'kg',
+      'summary': 'x',
+      'reading': 'x',
+    });
+    await sync.sync();
+    expect(data.proposals.keys, contains('pgone'));
+    server.restore(newEpoch: 99);
+    await sync.sync();
+    expect(data.proposals, isEmpty);
+  });
 }
 
 class _OfflineApi implements SyncApi {

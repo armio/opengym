@@ -73,6 +73,18 @@ void main() {
       expect(requests.single.headers.containsKey('Content-Type'), isFalse);
     });
 
+    test('a 2xx sync answer without the counters is a server error, never seq 0 / epoch 0', () async {
+      for (final body in [
+        http.Response('<html>Sign in</html>', 200, headers: {'content-type': 'text/html'}),
+        http.Response('', 200),
+        json(200, {'docs': []}),
+      ]) {
+        final api = client((_) async => body);
+        await expectLater(api.pull(5), throwsA(isA<ServerException>()));
+        await expectLater(api.push({'since': 5}), throwsA(isA<ServerException>()));
+      }
+    });
+
     test('login sends no token and returns the new one', () async {
       final api = client((_) async => json(200, {'token': 'new', 'deviceId': 'd1'}), token: null);
       final res = await api.login(password: 'pw', deviceName: 'Mi Android');

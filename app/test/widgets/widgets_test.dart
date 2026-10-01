@@ -174,6 +174,33 @@ void main() {
     expect(await no, isFalse);
   });
 
+  testWidgets('a locked showConfirm ignores the backdrop and back; only its buttons answer', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.build(brightness: Brightness.dark),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    );
+    final context = tester.element(find.byType(SizedBox));
+
+    final answer = showConfirm(
+      context,
+      message: '¿Subir?',
+      confirmText: 'Subir',
+      cancelText: 'Descartar',
+      locked: true,
+    );
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(5, 5)); // the barrier
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('¿Subir?'), findsOneWidget);
+    await tester.tap(find.text('Subir'));
+    await tester.pumpAndSettle();
+    expect(await answer, isTrue);
+  });
+
   testWidgets('toasts show one message at a time and disappear after 2.2 s', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

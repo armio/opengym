@@ -143,7 +143,7 @@ Future<T?> showAppDialog<T>(BuildContext context, {required WidgetBuilder builde
 
 /// The themed confirm dialog (`confirmSheet`): optional title, message, a confirm button
 /// (red when [danger]) and a dim cancel button. Resolves to true only on confirm; tapping the
-/// backdrop cancels.
+/// backdrop or going back cancels, unless [locked] (then only the two buttons answer).
 Future<bool> showConfirm(
   BuildContext context, {
   String? title,
@@ -151,9 +151,11 @@ Future<bool> showConfirm(
   String confirmText = 'Confirmar',
   String cancelText = 'Cancelar',
   bool danger = false,
+  bool locked = false,
 }) async {
   final result = await showAppDialog<bool>(
     context,
+    locked: locked,
     builder: (ctx) {
       final t = ctx.textStyles;
       return Column(
